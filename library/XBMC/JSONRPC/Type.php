@@ -731,12 +731,11 @@ class XBMC_JSONRPC_Type {
 		self::$currentImports = array();
 	}
 	
-	public static function renderAll($folder) {
+	public static function renderAll($folder, $header = '') {
 		foreach (self::$classes as $className => $types) {
 			if (count($types)) {
 				self::clearImports();
 				$filename = $folder.'/'.$className.'.java';
-				$content = 'package '.self::PACKAGE.";\n\n";
 				$imports = '';
 				$class = '';
 				$inner = '';
@@ -753,6 +752,8 @@ class XBMC_JSONRPC_Type {
 				foreach(self::$currentImports as $import) {
 					$imports .= 'import '.$import.";\n";
 				}
+				$content = $header;
+				$content .= 'package '.self::PACKAGE.";\n\n";
 				$content .= $imports;
 				$content .= $class;
 				$content .= $inner;

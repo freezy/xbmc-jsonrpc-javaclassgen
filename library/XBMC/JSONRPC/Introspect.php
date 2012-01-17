@@ -25,7 +25,7 @@ class XBMC_JSONRPC_Introspect {
 	public function parseTypes() {
 		print "*** Reading Types...\n";
 		$types = $this->_introspect->types;
-		XBMC_JSONRPC_T::processAll($types);
+		XBMC_JSONRPC_Type::processAll($types);
 	}
 	
 	public function parseMethods() {
@@ -36,7 +36,7 @@ class XBMC_JSONRPC_Introspect {
 		if (!is_dir($folder) || !is_writable($folder)) {
 			throw new Exception('Folder "'.$folder.'" must exist and be writeable.');
 		}
-		XBMC_JSONRPC_T::renderAll($folder);
+		XBMC_JSONRPC_Type::renderAll($folder);
 	}
 	
 }

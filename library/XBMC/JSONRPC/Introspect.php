@@ -6,6 +6,8 @@ class XBMC_JSONRPC_Introspect {
 	
 	private $_filename;
 	private $_introspect;
+	
+	private static $package = '';
 	private static $header = '/*
  *      Copyright (C) 2005-2015 Team XBMC
  *      http://xbmc.org
@@ -44,21 +46,21 @@ class XBMC_JSONRPC_Introspect {
 		print "*** Introspect loaded.\n";
 	}
 	
-	public function parseTypes() {
+	public function readTypes() {
 		print "*** Reading Types...\n";
 		$types = $this->_introspect->types;
 		XBMC_JSONRPC_Type::processAll($types);
 	}
 	
-	public function parseMethods() {
+	public function readMethods() {
 		$methods = $this->_introspect->methods;
 	}
 	
-	public function renderMethods($folder) {
+	public function compileMethods($folder) {
 		if (!is_dir($folder) || !is_writable($folder)) {
 			throw new Exception('Folder "'.$folder.'" must exist and be writeable.');
 		}
-		XBMC_JSONRPC_Type::renderAll($folder, self::$header);
+		XBMC_JSONRPC_Type::compileAll($folder, self::$header);
 	}
 	
 }

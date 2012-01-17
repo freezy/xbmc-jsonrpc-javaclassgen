@@ -25,9 +25,9 @@ Create a script that looks something like this:
 
 		$introspect = new XBMC_JSONRPC_Introspect();
 		
-		$introspect->parseTypes();
-		$introspect->parseMethods();
-		$introspect->renderMethods('/tmp/java/src');
+		$introspect->readTypes();
+		$introspect->readMethods();
+		$introspect->compileMethods('/tmp/java/src');
 		
 	} catch (Exception $e) {
 		echo "ERROR: ".$e->getMessage()."\n";

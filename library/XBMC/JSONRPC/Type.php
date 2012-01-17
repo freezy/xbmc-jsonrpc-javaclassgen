@@ -705,7 +705,7 @@ class XBMC_JSONRPC_Type {
 	}
 	
 	/**
-	 * Renders type classes for all types.
+	 * Compiles type classes for all types.
 	 * 
 	 * @param stdClass $types "types" node from introspect. 
 	 */
@@ -731,7 +731,7 @@ class XBMC_JSONRPC_Type {
 		self::$currentImports = array();
 	}
 	
-	public static function renderAll($folder, $header = '') {
+	public static function compileAll($folder, $header = '') {
 		foreach (self::$classes as $className => $types) {
 			if (count($types)) {
 				self::clearImports();
@@ -743,7 +743,7 @@ class XBMC_JSONRPC_Type {
 				$class .= "\npublic final class ".$className." {\n";
 				foreach($types as $typeName => $type) {
 					if (!in_array($type->name, self::$ignoreTypes)) {
-						$inner .= $type->render(0);
+						$inner .= $type->compile(0);
 					}
 				}
 				if (!$inner) {
@@ -762,44 +762,40 @@ class XBMC_JSONRPC_Type {
 			}
 		}
 	}	
-	public function render($i) {
+	public function compile($i) {
 		
 		if (in_array($this->name, self::$emptyTypes)) {
-			$this->p('*** NOT RENDERING empty type '.$this->name.'.');
+			$this->p('*** NOT COMPILING empty type '.$this->name.'.');
 			return;
 		} 
 		
 		if ($this->isNative() && !count($this->enums)) {
-			$this->p('*** NOT RENDERING native type '.$this->name.'.');
+			$this->p('*** NOT COMPILING native type '.$this->name.'.');
 			return;
 		}
 
 		if (!count($this->enums) && !count($this->properties)) {
 			if ($this->arrayType) {
-				$this->p('*** RENDER: '.$this->name.': Rendering item type instead of base type.');
-				return $this->arrayType->render($i);
+				$this->p('*** COMPILE: '.$this->name.': Compiling item type instead of base type.');
+				return $this->arrayType->compile($i);
 			} else {
-				throw new Exception('Cannot render with no item type, no enum and no props ('.$this->name.')!');
+				throw new Exception('Cannot compile with no item type, no enum and no props ('.$this->name.')!');
 			}
 		}
 		if (in_array($this->name, self::$emptyTypes) || count($this->enums)) {
-			return $this->renderEnum($i);
+			return $this->compileEnum($i);
 		} else {
-			return $this->renderClass($i);
+			return $this->compileClass($i);
 		}
 	
 	}
-	public function renderClass($i) {
+	public function compileClass($i) {
 		
 		self::addImport('JSONArray');
 		self::addImport('JSONObject');
 		self::addImport('JSONException');
 		
-		$this->p('*** RENDER CLASS: '.$this->name);
-/*		if (!count($this->properties)) {
-			var_dump($this->properties);
-			throw new Exception('Properies must be an array when rendering a class!');
-		}*/
+		$this->p('*** COMPILE CLASS: '.$this->name);
 		$content = $this->r($i, '	/**');
 		if ($this->id) {
 			$content .= $this->r($i, sprintf('	 * %s', $this->id));
@@ -834,7 +830,7 @@ class XBMC_JSONRPC_Type {
 			$content .= $this->getJavaArrayCreator($i);
 //		} 
 		foreach ($this->getInnerClasses() as $class) {
-			$content .= $class->render($i + 1);
+			$content .= $class->compile($i + 1);
 		}
 		
 		
@@ -842,8 +838,8 @@ class XBMC_JSONRPC_Type {
 		
 		return $content; 
 	}
-	public function renderEnum($i) {
-		$this->p('*** RENDER ENUM: '.$this->name);
+	public function compileEnum($i) {
+		$this->p('*** COMPILE ENUM: '.$this->name);
 		$content = $this->r($i, sprintf('	public interface %s {', $this->javaType)); 
 		if (count($this->enums)) {
 			foreach($this->enums as $enum) {

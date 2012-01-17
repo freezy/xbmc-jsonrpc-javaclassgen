@@ -53,10 +53,12 @@ class XBMC_JSONRPC_Introspect {
 	}
 	
 	public function readMethods() {
+		print "*** Reading Methods...\n";
 		$methods = $this->_introspect->methods;
+		XBMC_JSONRPC_Method::processAll($methods);
 	}
 	
-	public function compileMethods($folder) {
+	public function compileTypes($folder) {
 		if (!is_dir($folder) || !is_writable($folder)) {
 			throw new Exception('Folder "'.$folder.'" must exist and be writeable.');
 		}

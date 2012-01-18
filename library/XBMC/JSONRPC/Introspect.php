@@ -64,5 +64,11 @@ class XBMC_JSONRPC_Introspect {
 		}
 		XBMC_JSONRPC_Type::compileAll($folder, self::$header);
 	}
+	public function compileMethods($folder) {
+		if (!is_dir($folder) || !is_writable($folder)) {
+			throw new Exception('Folder "'.$folder.'" must exist and be writeable.');
+		}
+		XBMC_JSONRPC_Method::compileAll($folder, self::$header);
+	}
 	
 }

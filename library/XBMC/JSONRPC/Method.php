@@ -4,7 +4,8 @@ class XBMC_JSONRPC_Method {
 	
 //	const HALT_AT = 'Player.Open';
 //	const HALT_AT = 'AudioLibrary.GetAlbums';
-	const HALT_AT = 'AudioLibrary.GetRecentlyAddedSongs'; // has parameter descriptions
+//	const HALT_AT = 'AudioLibrary.GetRecentlyAddedSongs'; // has parameter descriptions
+	const HALT_AT = ''; // has parameter descriptions
 	
 	/* directly copied attributes:
 	 */
@@ -30,8 +31,21 @@ class XBMC_JSONRPC_Method {
 	/* collections
 	 */
 	private static $global = array(); // all methods referenced
+	private static $classes = array(); // global types organized by [wrapperclass][typeclass] (javaClass/javaType.
 	private static $attrs = array('description', 'params', 'returns', 'type'); // possible attributes
 	private static $listParamNames = array('sort', 'limits');
+	
+	/* configuration
+	 */
+	const PACKAGE = 'org.xbmc.android.jsonrpc.api.callgen';
+	private static $imports = array(
+		'ArrayList' => 'java.util.ArrayList',
+		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.model.AbstractModel',
+		'JSONArray' => 'org.json.JSONArray',
+		'JSONObject' => 'org.json.JSONObject',
+		'JSONException' => 'org.json.JSONException',
+	);
+	public static $currentImports = array();
 	
 	public function __construct($name, $obj) {
 		
@@ -46,6 +60,16 @@ class XBMC_JSONRPC_Method {
 		$this->parseReturns($obj);
 		$this->generateConstructors();
 		
+		// move out later if necessary
+		$this->reference();
+	}
+	
+	public function reference() {
+		// add to classes array so we can generate the java classes easily.
+		if (!array_key_exists($this->ns, self::$classes)) {
+			self::$classes[$this->ns] = array();
+		}
+		self::$classes[$this->ns][$this->m] = $this;
 	}
 	
 	private function parseName($name) {
@@ -149,20 +173,24 @@ class XBMC_JSONRPC_Method {
 			throw new Exception('No return type set for method "'.$this->name.'".');
 		}
 		$i = 0;
-		$isArray = isset($obj->return->limits);
-		foreach ($obj->returns->properties as $attr => $r) {
-			$i++;
-			if ($i > 2) {
-				throw new Exception('Should not have more than 2 return type properties. Please check wtf is going on.');
-			} 
-			if ($attr == 'limits') {
-				continue;
+		if (isset($obj->returns->properties)) {
+			$isArray = isset($obj->returns->properties->limits);
+			foreach ($obj->returns->properties as $attr => $r) {
+				$i++;
+				if ($i > 2) {
+					throw new Exception('Should not have more than 2 return type properties ("limits" and result). Please check wtf is going on.');
+				} 
+				if ($attr == 'limits') {
+					continue;
+				}
+				if ($isArray && !isset($r->items)) {
+					throw new Exception('The "limits" property is defined but there is no "items" attribute in the return object. Please check.');
+				}
+				$this->returnAttr = $attr;
+				$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $isArray ? $r->items : $r);
 			}
-			if ($isArray && !isset($r->items)) {
-				throw new Exception('The "limits" property is defined but there is no "items" attribute in the return object. Please check.');
-			}
-			$this->returnAttr = $attr;
-			$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $isArray ? $r->items : $r);
+		} else {
+			$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $obj->returns);
 		}
 	//	print_r($this->returns->arrayType->getInstance());exit;
 	}
@@ -211,14 +239,47 @@ class XBMC_JSONRPC_Method {
 //		self::referenceAll();
 //		self::assertAll();
 //		self::printAll();
-		self::compileAll();
+//		self::compileAll();
 	}
 	
-	public static function compileAll() {
-		foreach (self::$global as $method) {
-			print $method->compile();
-		}
+	public static function addImport($import) {
+		self::$currentImports[] = self::$imports[$import];
+		self::$currentImports = array_unique(self::$currentImports);
+		sort(self::$currentImports);
+	} 
+	public static function clearImports() {
+		self::$currentImports = array();
 	}
+		
+	public static function compileAll($folder, $header = '') {
+		foreach (self::$classes as $namespace => $classes) {
+			if (count($classes)) {
+				self::clearImports();
+				$filename = $folder.'/'.$namespace.'.java';
+				$imports = '';
+				$ns = '';
+				$inner = '';
+				
+				$ns .= "\npublic final class ".$namespace." {\n";
+				foreach ($classes as $c) {
+					$inner .= $c->compile();
+				}
+				if (!$inner) {
+					continue;
+				}
+				foreach(self::$currentImports as $import) {
+					$imports .= 'import '.$import.";\n";
+				}
+				$content = $header;
+				$content .= 'package '.self::PACKAGE.";\n\n";
+				$content .= $imports;
+				$content .= $ns;
+				$content .= $inner;
+				$content .= '}';
+				file_put_contents($filename, $content);
+			}
+		}
+	}	
 	
 	public function getReturnType() {
 		if (isset($this->returns->arrayType)) {
@@ -288,6 +349,7 @@ class XBMC_JSONRPC_Method {
 		$content .= $this->r($i, sprintf(' * @throws JSONException'));
 		$content .= $this->r($i, sprintf(' */'));
 		$content .= $this->r($i, sprintf('public %s(%s) throws JSONException {', $this->m, $args));
+		$content .= $this->r($i, sprintf('	super();'));
 		$content .= $this->r($i, sprintf('}'));
 		return $content;
 	}

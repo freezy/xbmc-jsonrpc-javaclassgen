@@ -71,7 +71,7 @@ class XBMC_JSONRPC_Type {
 	
 	/* collections
 	 */
-	private static $global = array(); // "global types"
+	public static $global = array(); // "global types"
 	private static $classes = array(); // global types organized by [wrapperclass][typeclass] (javaClass/javaType.
 	
 	/* configuration
@@ -140,7 +140,7 @@ class XBMC_JSONRPC_Type {
 	 * Returns either current or references instance.
 	 * @return XBMC_JSONRPC_Type
 	 */
-	protected function getInstance() {
+	public function getInstance() {
 		if ($this->ref) {
 			return $this->getRef();
 		}
@@ -152,7 +152,7 @@ class XBMC_JSONRPC_Type {
 	 * Only used for assert.
 	 * @return string
 	 */
-	protected function getType() {
+	public function getType() {
 		if (!$this->type) {
 			if ($this->extends) {
 				if (!is_array($this->extends)) {
@@ -557,7 +557,7 @@ class XBMC_JSONRPC_Type {
 			$this->p('  - We\'re an array ('.$this->arrayType->type.').');
 		}
 	}
-	private function parseJavaName() {
+	protected function parseJavaName() {
 		$parts = explode('.', $this->getInstance()->name);
 		$this->javaClass = $parts[0].'Model';
 		switch (count($parts)) {

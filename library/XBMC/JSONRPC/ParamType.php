@@ -1,0 +1,26 @@
+<?php
+
+class XBMC_JSONRPC_ParamType extends XBMC_JSONRPC_Type {
+	
+	public function __construct($obj) {
+		parent::__construct(0, null, $obj, true, false, null);
+
+		$this->parseName();
+		$this->parseJavaName();
+	}
+	
+	private function parseName() {
+		if ($this->ref) {
+			$name = str_replace('.', '', $this->ref);
+		} else {
+			$propkeys = array();
+			foreach ($this->properties as $key => $val) {
+				$propkeys[] = ucwords($key);
+			}
+			sort($propkeys);
+			$name = implode('', $propkeys);
+		}
+		$this->name = $name;
+	}
+	
+}

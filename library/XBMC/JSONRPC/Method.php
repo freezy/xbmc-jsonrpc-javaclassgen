@@ -3,7 +3,8 @@
 class XBMC_JSONRPC_Method {
 	
 //	const HALT_AT = 'Player.Open';
-	const HALT_AT = 'AudioLibrary.GetAlbums';
+//	const HALT_AT = 'AudioLibrary.GetAlbums';
+	const HALT_AT = 'AudioLibrary.GetRecentlyAddedSongs'; // has parameter descriptions
 	
 	/* directly copied attributes:
 	 */
@@ -30,6 +31,7 @@ class XBMC_JSONRPC_Method {
 	 */
 	private static $global = array(); // all methods referenced
 	private static $attrs = array('description', 'params', 'returns', 'type'); // possible attributes
+	private static $listParamNames = array('sort', 'limits');
 	
 	public function __construct($name, $obj) {
 		
@@ -79,14 +81,9 @@ class XBMC_JSONRPC_Method {
 				$types[] = $tt;
 				$names[] = $param->name;
 			} else {
-				$t = $param->getType();
-				if (isset($t->id) && substr($t->id, 0, 5) == 'List.') {
-					$listParams[$param->name] = $t; 
-				} else {
-					$types[] = array($t);
-					$names[] = $param->name;
-				}
+				$types[] = array($param->getType());
 			}
+			$names[] = $param->name;
 		}
 		$this->listParams = $listParams;
 		
@@ -138,8 +135,12 @@ class XBMC_JSONRPC_Method {
 
 	private function parseParams($obj) {
 		if (isset($obj->params)) {
-			foreach ($obj->params as $name => $param) {
-				$this->params[$name] = new XBMC_JSONRPC_Param($param);
+			foreach ($obj->params as $param) {
+				if (in_array($param->name, self::$listParamNames)) {
+					$this->listParams[] = new XBMC_JSONRPC_Param($param);
+				} else {
+					$this->params[] = new XBMC_JSONRPC_Param($param);
+				}
 			}
 		}
 	}
@@ -255,13 +256,37 @@ class XBMC_JSONRPC_Method {
 		
 		// args
 		$args = '';
+		// count the number of arrays first
+		$n = 0;
 		foreach ($c as $name => $type) {
-			$args .= $type->getJavaType().' '.$name.', ';
+			if ($type->getType() == 'array') {
+				$a = $name;
+				$n++;
+			}
+		}
+		// move array to bottom
+		if ($n == 1) {
+			$aa = $c[$a];
+			unset($c[$a]);
+			$c[$a] = $aa;
+		}
+		
+		foreach ($c as $name => $type) {
+			$args .= $type->getJavaParamType($n == 1).' '.$name.', ';
 		}
 		$args = substr($args, 0, -2);
 		
 		$i = 2;
 		$content = '';
+		$content .= $this->r($i, sprintf('/**'));
+		if ($this->description) {
+			$content .= $this->r($i, sprintf(' * %s', $this->description));
+		}
+		foreach ($this->params as $param) {
+			$content .= $this->r($i, sprintf(' * @param %s %s', $param->name, $param->description));
+		}
+		$content .= $this->r($i, sprintf(' * @throws JSONException'));
+		$content .= $this->r($i, sprintf(' */'));
 		$content .= $this->r($i, sprintf('public %s(%s) throws JSONException {', $this->m, $args));
 		$content .= $this->r($i, sprintf('}'));
 		return $content;

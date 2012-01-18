@@ -285,6 +285,36 @@ class XBMC_JSONRPC_Type {
 			}
 		}
 	}
+	public function getJavaParamType($niceArrays = false) {
+		if ($this->isInner) {
+			return $this->javaType;
+		} else {
+			$type = $this->getType();
+			if ($this->getArrayType()) {
+				if ($niceArrays) {
+					return $this->getArrayType()->getJavaType().'...';
+				} else {
+					return $this->getArrayType()->getJavaType().'[]';
+				}
+			} else {
+				switch ($this->getType()) {
+					case 'integer':
+						return !$this->required ? 'Integer' : 'int';
+					case 'null':
+					case 'string':
+						return 'String';
+					case 'boolean':
+						return !$this->required ? 'Boolean' : 'boolean';
+					case 'number':
+						return !$this->required ? 'Double' : 'double';
+					case 'object':
+						return $this->javaClass.'.'.$this->javaType;
+					default:
+						throw new Exception('Unknown type "'.$type.'".');
+				}
+			}
+		}
+	}
 	public function getJavaMultiType(array $obj) {
 		// TODO treat this correctly
 		$types = array();

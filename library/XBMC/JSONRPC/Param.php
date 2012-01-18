@@ -7,6 +7,7 @@ class XBMC_JSONRPC_Param	 {
 	public $ref = null;
 	public $default = null;
 	public $name = null;
+	public $description = null;
 	
 	/* references
 	 */
@@ -22,6 +23,7 @@ class XBMC_JSONRPC_Param	 {
 		// copy values from object
 		$this->name = $obj->name;
 		$this->default = isset($obj->default) ? $obj->default : null;
+		$this->description = isset($obj->description) ? $obj->description : null;
 		
 		$this->parseRef($obj);
 		$this->parseType($obj);

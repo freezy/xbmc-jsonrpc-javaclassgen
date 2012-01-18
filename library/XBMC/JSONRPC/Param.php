@@ -1,6 +1,6 @@
 <?php
 
-class XBMC_JSONRPC_Param	 {
+class XBMC_JSONRPC_Param {
 	
 	/* directly copied attributes:
 	 */
@@ -13,12 +13,20 @@ class XBMC_JSONRPC_Param	 {
 	 */
 	public $type = null; // can be one or an array of (or null if referred).
 	
+	/* help attributes
+	 */
+	public $isArray = false;
+	
 	/* collections
 	 */
 	private static $attrs = array('$ref', 'default', 'name'); // possible attributes
 
 	
 	public function __construct(stdClass $obj) {
+		
+		if (!is_object($obj)) {
+			throw new Exception('"'.$obj.'" is not an object.');
+		}
 		
 		// copy values from object
 		$this->name = $obj->name;
@@ -31,6 +39,13 @@ class XBMC_JSONRPC_Param	 {
 	
 	private function parseRef($obj) {
 		$ref = '$ref';
+		if (isset($obj->type) && $obj->type == 'array') {
+			if (!isset($obj->items)) {
+				throw new Exception('Parameter type is array, but no "items" node found.');
+			}
+			$this->isArray = true;
+			$obj = $obj->items;
+		}
 		if (property_exists($obj, '$ref')) {
 			$this->ref = $obj->$ref;
 		}
@@ -45,9 +60,17 @@ class XBMC_JSONRPC_Param	 {
 			foreach ($obj->type as $type) {
 				$this->type[] = new XBMC_JSONRPC_ParamType($type);
 			}
-//			print_r($this->type);exit;
-		} else {
+		} else if (is_object($this->type)) {
 			$this->type = new XBMC_JSONRPC_ParamType($obj->type);
+		} else {
+			if ($this->type == 'array') {
+				if (!isset($this->items)) {
+					throw new Exception('Type is "array", but no "items" attribute found.');
+				}
+				$this->type = new XBMC_JSONRPC_ParamType($obj->items);
+			} else {
+				$this->type = new XBMC_JSONRPC_ParamType($obj);
+			}
 		}
 	}
 	
@@ -56,6 +79,7 @@ class XBMC_JSONRPC_Param	 {
 	 */
 	public function getType() {
 		if (!$this->type && !$this->ref) {
+			print_r($this);
 			throw new Exception('Cannot return type if "type" AND reference are unknown.');
 		}
 		if ($this->ref) {

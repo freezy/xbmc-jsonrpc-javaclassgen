@@ -4,8 +4,8 @@ class XBMC_JSONRPC_Method {
 	
 //	const HALT_AT = 'Player.Open';
 //	const HALT_AT = 'AudioLibrary.GetAlbums';
-//	const HALT_AT = 'AudioLibrary.GetRecentlyAddedSongs'; // has parameter descriptions
-	const HALT_AT = ''; // has parameter descriptions
+	const HALT_AT = 'XBMC.GetInfoLabels';
+//	const HALT_AT = ''; // has parameter descriptions
 	
 	/* directly copied attributes:
 	 */
@@ -18,6 +18,7 @@ class XBMC_JSONRPC_Method {
 	public $params = array(); // array of XBMC_JSONRPC_Param objects
 	public $constructs = array(); // constructor types
 	public $listParams = array(); // list params we don't want in the constructor (generate a setter)
+	public $innerClasses = array(); // inner classes can happen for return types and parameters that aren't referenced by defined in the method's body.
 	public $ns; // the "namespace" of the API method
 	public $m;  // the method name, without namespace.
 	/**
@@ -34,6 +35,7 @@ class XBMC_JSONRPC_Method {
 	private static $classes = array(); // global types organized by [wrapperclass][typeclass] (javaClass/javaType.
 	private static $attrs = array('description', 'params', 'returns', 'type'); // possible attributes
 	private static $listParamNames = array('sort', 'limits');
+	private static $listReturnNames = array('limits');
 	
 	/* configuration
 	 */
@@ -80,7 +82,6 @@ class XBMC_JSONRPC_Method {
 		$this->name = $name;
 		$this->ns = $p[0];
 		$this->m = $p[1];
-		
 	}
 	
 	/**
@@ -110,6 +111,9 @@ class XBMC_JSONRPC_Method {
 			$names[] = $param->name;
 		}
 		$this->listParams = $listParams;
+		if (!count($types)) {
+			return;
+		}
 		
 		/* 
 		 * now we have $types, where first the dimension are the params and 
@@ -172,22 +176,34 @@ class XBMC_JSONRPC_Method {
 		if (!isset($obj->returns)) {
 			throw new Exception('No return type set for method "'.$this->name.'".');
 		}
-		$i = 0;
 		if (isset($obj->returns->properties)) {
+			$i = 0;
 			$isArray = isset($obj->returns->properties->limits);
-			foreach ($obj->returns->properties as $attr => $r) {
-				$i++;
-				if ($i > 2) {
-					throw new Exception('Should not have more than 2 return type properties ("limits" and result). Please check wtf is going on.');
-				} 
-				if ($attr == 'limits') {
-					continue;
+			// check if there is only 1 prop besides the ones we ignore
+			$ignore = 0;
+			$total = 0;
+			$attr = null;
+			$returnObject = new stdClass();
+			$returnObject->properties = new stdClass();
+			$returnObject->type = 'object';
+			foreach ($obj->returns->properties as $a => $r) {
+				if (in_array($a, self::$listReturnNames)) {
+					$ignore++;
+				} else {
+					$attr = $a;
+					$returnObject->properties->$a = $r;
 				}
-				if ($isArray && !isset($r->items)) {
-					throw new Exception('The "limits" property is defined but there is no "items" attribute in the return object. Please check.');
+				$total++;
+			}
+			if ($total - $ignore == 1) {
+				if (isset($r->items)) {
+					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $r->items);
+				} else {
+					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $r);
 				}
-				$this->returnAttr = $attr;
-				$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $isArray ? $r->items : $r);
+			} else {
+				$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $returnObject, true);
+				$this->innerClasses[] = $this->returns;
 			}
 		} else {
 			$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $obj->returns);
@@ -276,7 +292,13 @@ class XBMC_JSONRPC_Method {
 				$content .= $ns;
 				$content .= $inner;
 				$content .= '}';
-				file_put_contents($filename, $content);
+				if (self::HALT_AT) {
+					print $content;
+				} else {
+					file_put_contents($filename, $content);
+					print "Written ".strlen($content)." bytes to ".$filename.".\n";
+					
+				}
 			}
 		}
 	}	
@@ -308,6 +330,9 @@ class XBMC_JSONRPC_Method {
 			$content .= $this->compileConstructor($c);
 		}
 		
+		foreach ($this->innerClasses as $c) {
+			$content .= $c->compile(1);
+		}
 		$content .= $this->r($i, sprintf('} '));
 		
 		return $content;

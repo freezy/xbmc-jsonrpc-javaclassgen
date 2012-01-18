@@ -58,11 +58,11 @@ class XBMC_JSONRPC_Type {
 	
 	/* helper variables
 	 */
-	private $isProperty = false; // was added as a property type
-	private $isArray = false;    // was added from "items" as array type
-	private $isInner = false;    // we're dealing with an anonymous type (see class comment)
-	private $isUsedAsArray = false; // needed so we can generate the getArray() method which instatiates the array in java.
-	private $indent; // pretty print
+	protected $isProperty = false; // was added as a property type
+	protected $isArray = false;    // was added from "items" as array type
+	protected $isInner = false;    // we're dealing with an anonymous type (see class comment)
+	protected $isUsedAsArray = false; // needed so we can generate the getArray() method which instatiates the array in java.
+	protected $indent; // pretty print
 	
 	/* java mappings
 	 */
@@ -269,6 +269,7 @@ class XBMC_JSONRPC_Type {
 					switch ($this->getType()) {
 						case 'integer':
 							return $this->isArray ? 'Integer' : 'int';
+						case 'any':
 						case 'null':
 						case 'string':
 							return 'String';
@@ -300,6 +301,7 @@ class XBMC_JSONRPC_Type {
 				switch ($this->getType()) {
 					case 'integer':
 						return !$this->required ? 'Integer' : 'int';
+					case 'any':
 					case 'null':
 					case 'string':
 						return 'String';
@@ -542,6 +544,9 @@ class XBMC_JSONRPC_Type {
 	}
 	private function parseRef($obj) {
 		$ref = '$ref';
+		if (!is_object($obj)) {
+			throw new Exception('Cannot parse reference from non-object ('.$obj.').');
+		}
 		if (property_exists($obj, '$ref')) {
 			$this->ref = $obj->$ref;
 		}

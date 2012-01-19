@@ -64,7 +64,7 @@ class XBMC_JSONRPC_Type {
 	 */
 	protected $isProperty = false; // was added as a property type
 	protected $isArray = false;    // was added from "items" as array type
-	protected $isInner = false;    // we're dealing with an anonymous type (see class comment)
+	public $isInner = false;    // we're dealing with an anonymous type (see class comment)
 	protected $isUsedAsArray = false; // needed so we can generate the getArray() method which instatiates the array in java.
 	protected $indent; // pretty print
 	
@@ -296,8 +296,7 @@ class XBMC_JSONRPC_Type {
 		} else {
 			$type = $this->getType();
 			if (is_array($type)) {
-				print_r($this);
-				exit;
+				return $this->getInstance()->getJavaType();
 			}
 			if ($this->getArrayType()) {
 				if ($niceArrays) {

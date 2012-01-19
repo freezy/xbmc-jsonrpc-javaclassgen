@@ -22,6 +22,7 @@ class XBMC_JSONRPC_ParamType extends XBMC_JSONRPC_Type {
 			}
 			sort($propkeys);
 			$name = implode('', $propkeys).$nameSuffix;
+			$this->isInner = true;
 		}
 		$this->name = $name;
 	}

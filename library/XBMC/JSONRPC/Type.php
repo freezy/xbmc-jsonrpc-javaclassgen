@@ -37,6 +37,9 @@
  */
 class XBMC_JSONRPC_Type {
 	
+	const HALT_AT = '';
+//	const HALT_AT = 'Playlist.Item';
+	
 	/* directly copied attributes:
 	 */
 	public $id = null;
@@ -52,6 +55,7 @@ class XBMC_JSONRPC_Type {
 	 */
 	public $properties = array(); // array of XBMC_JSONRPC_Type objects.
 	public $innerClasses = array(); // all anonymous property types 
+	public $innerTypes = array(); // when parameters are of multiple types, create sub-classes with simplified constructor.
 	public $arrayType = null; // read from "items"
 	public $obj; // original JSON data
 	public $name; // the name from instantiation. on global objects it equals to ID, but on inner stuff it's the var name.
@@ -291,6 +295,10 @@ class XBMC_JSONRPC_Type {
 			return $this->javaType;
 		} else {
 			$type = $this->getType();
+			if (is_array($type)) {
+				print_r($this);
+				exit;
+			}
 			if ($this->getArrayType()) {
 				if ($niceArrays) {
 					return $this->getArrayType()->getJavaType().'...';
@@ -404,7 +412,15 @@ class XBMC_JSONRPC_Type {
 					}
 			}
 		}
-	}	
+	}
+	public function getJavaNullValue() {
+		switch ($this->getJavaType()) {
+			case 'int':
+				return '-1';
+			default:
+				return 'null';
+		}
+	}
 	public function getJavaParent() {
 		if ($this->extends) {
 			return $this->getExtends()->getJavaType();
@@ -620,12 +636,14 @@ class XBMC_JSONRPC_Type {
 		if (!$this->isMultiObjectType()) {
 			return;
 		}
+		
 		$propsFromType = new stdClass();
 		$propsFromType->properties = new stdClass();
-		foreach ($this->type as $type) {
+		foreach ($this->getType() as $type) {
 			foreach ($type->properties as $pname => $pval) {
 				$propsFromType->properties->$pname = $pval;
 			}
+			$this->innerTypes[] = new XBMC_JSONRPC_ParamType($type, $this->javaType);
 		}
 		$this->parseProperties($propsFromType);
 	}
@@ -777,6 +795,9 @@ class XBMC_JSONRPC_Type {
 				
 				$class .= "\npublic final class ".$className." {\n";
 				foreach($types as $typeName => $type) {
+					if (self::HALT_AT && $type->id != self::HALT_AT) {
+						continue;
+					}
 					if (!in_array($type->name, self::$ignoreTypes)) {
 						$inner .= $type->compile(0);
 					}
@@ -793,7 +814,12 @@ class XBMC_JSONRPC_Type {
 				$content .= $class;
 				$content .= $inner;
 				$content .= '}';
-				file_put_contents($filename, $content);
+				
+				if (self::HALT_AT) {
+					print $content."\n";
+				} else {
+					file_put_contents($filename, $content);
+				}
 			}
 		}
 	}	
@@ -824,6 +850,62 @@ class XBMC_JSONRPC_Type {
 		}
 	
 	}
+	public function compileNativeConstructor($i) {
+		$i++;
+		$i++;
+		// don't support inherited native constructors for now
+		if ($this->extends) {
+			return '';
+		}
+		$constructArgs = '';
+		foreach ($this->properties as $name => $t) {
+			$constructArgs .= $t->getJavaType().' '.$name.', ';
+		}
+		$constructArgs = substr($constructArgs, 0, -2);
+		$content = '';
+		$content .= $this->r($i, sprintf('public %s(%s) {', $this->javaType, $constructArgs));
+		$i++;
+		foreach ($this->properties as $name => $t) {
+			$content .= $this->r($i, sprintf('this.%s = %s;', $name, $name));
+		}
+		$i--;
+		$content .= $this->r($i, sprintf('}'));
+		
+		return $content;
+	}
+	public function compileMultitype($i, $type) {
+		if (!is_array($type->properties)) {
+			throw new Exception('Cannot render inner type class with no properties.');
+		}
+		$constructArgs = '';
+		$localMembers = array();
+		foreach ($type->properties as $name => $t) {
+			$constructArgs .= $t->getJavaType().' '.$name.', ';
+			$localMembers[] = $name;
+		}
+		$constructArgs = substr($constructArgs, 0, -2);
+		
+		$superConstuctorArgs = '';
+		foreach ($this->properties as $name => $prop) {
+			if (in_array($name, $localMembers)) {
+				$superConstuctorArgs .= $name.', ';
+			} else {
+				$superConstuctorArgs .= $prop->getJavaNullValue().', ';
+			}
+		}
+		$superConstuctorArgs = substr($superConstuctorArgs, 0, -2);
+		
+		$i++;
+		$content = '';
+		$content .= $this->r($i, sprintf('public class %s extends %s {', $type->name, $this->javaType));
+		$i++;
+		$content .= $this->r($i, sprintf('public %s(%s) {', $type->name, $constructArgs));
+		$content .= $this->r($i, sprintf('	super(%s);', $superConstuctorArgs));
+		$content .= $this->r($i, sprintf('}'));
+		$i--;
+		$content .= $this->r($i, sprintf('}'));
+		return $content;
+	}
 	public function compileClass($i) {
 		
 		self::addImport('JSONArray');
@@ -831,6 +913,8 @@ class XBMC_JSONRPC_Type {
 		self::addImport('JSONException');
 		
 		$this->p('*** COMPILE CLASS: '.$this->name);
+		
+		// class header
 		$content = $this->r($i, '	/**');
 		if ($this->id) {
 			$content .= $this->r($i, sprintf('	 * %s', $this->id));
@@ -849,6 +933,8 @@ class XBMC_JSONRPC_Type {
 		foreach ($this->properties as $name => $property) {
 			$content .= $this->r($i, sprintf('		public final %s %s;', $property->getJavaType(), $name));
 		}
+		
+		// json constructor
 		$content .= $this->r($i, sprintf('		public %s(JSONObject obj) throws JSONException {', $this->javaType));
 		if ($this->extends) {
 			$content .= $this->r($i, sprintf('			super(obj);'));
@@ -861,13 +947,21 @@ class XBMC_JSONRPC_Type {
 		}
 		$content .= $this->r($i, sprintf('		}'));
 		
-//		if ($this->isUsedAsArray) {
-			$content .= $this->getJavaArrayCreator($i);
-//		} 
+		// native constructor
+		$content .= $this->compileNativeConstructor($i);
+		
+		// inner "multi" types classes
+		foreach ($this->innerTypes as $type) {
+			$content .= $this->compileMultitype($i + 1, $type);
+		}
+		
+		// array creator
+		$content .= $this->getJavaArrayCreator($i);
+
+		// inner classes
 		foreach ($this->getInnerClasses() as $class) {
 			$content .= $class->compile($i + 1);
 		}
-		
 		
 		$content .= $this->r($i, sprintf('	}'));
 		

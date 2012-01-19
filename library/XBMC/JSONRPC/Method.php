@@ -2,9 +2,9 @@
 
 class XBMC_JSONRPC_Method {
 	
-//	const HALT_AT = 'Player.Open';
+	const HALT_AT = 'Player.Open';
 //	const HALT_AT = 'AudioLibrary.GetAlbums';
-	const HALT_AT = 'XBMC.GetInfoLabels';
+//	const HALT_AT = 'XBMC.GetInfoLabels';
 //	const HALT_AT = ''; // has parameter descriptions
 	
 	/* directly copied attributes:
@@ -95,12 +95,13 @@ class XBMC_JSONRPC_Method {
 		$types = array();
 		$names = array();
 		$listParams = array();
-
+		
 		// collect types
 		foreach ($this->params as $param) {
 			if (is_array($param->type)) {
 				$tt = array();
 				foreach ($param->type as $type) {
+					print_r($type->getInstance());
 					$tt[] = $type;
 				}
 				$types[] = $tt;
@@ -114,6 +115,7 @@ class XBMC_JSONRPC_Method {
 		if (!count($types)) {
 			return;
 		}
+		exit;
 		
 		/* 
 		 * now we have $types, where first the dimension are the params and 
@@ -312,6 +314,7 @@ class XBMC_JSONRPC_Method {
 	}
 	
 	private function compile() {
+		echo "... Compiling ".$this->name."...\n";
 		$i = 1;
 		$content = $this->r($i, '/**');
 		if ($this->description) {

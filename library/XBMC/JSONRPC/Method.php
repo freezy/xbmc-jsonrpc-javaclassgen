@@ -350,19 +350,31 @@ class XBMC_JSONRPC_Method {
 		$content .= $this->r($i, sprintf('	private static final String NAME = "%s";', $this->m));
 
 		// constructors
-		foreach ($this->constructs as $c) {
-			$content .= $this->compileConstructor($c);
+		$i++;
+		if (count($this->constructs)) {
+			foreach ($this->constructs as $c) {
+				$content .= $this->compileConstructor($c);
+			}
+		} else {
+			$content .= $this->r($i, sprintf('/**'));
+			if ($this->description) {
+				$content .= $this->r($i, sprintf(' * %s', $this->description));
+			}
+			$content .= $this->r($i, sprintf(' * @throws JSONException'));
+			$content .= $this->r($i, sprintf(' */'));
+			$content .= $this->r($i, sprintf('public %s() throws JSONException {', $this->m));
+			$content .= $this->r($i, sprintf('	super();'));
+			$content .= $this->r($i, sprintf('}'));
 		}
 		
 		foreach ($this->innerClasses as $c) {
-			$content .= $c->compile($i);
+			$content .= $c->compile($i - 1);
 		}
 		foreach ($this->params as $param) {
 			foreach ($param->getInnerTypes() as $type) {
-				$content .= $type->compile($i);
+				$content .= $type->compile($i - 1);
 			}
 		}
-		$i++;
 		$content .= $this->r($i, '@Override');
 		$content .= $this->r($i, 'protected String getName() {');
 		$content .= $this->r($i, '	return PREFIX + NAME;');

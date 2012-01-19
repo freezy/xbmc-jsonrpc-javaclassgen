@@ -13,7 +13,7 @@ class XBMC_JSONRPC_Param {
 	 */
 	public $type = null; // can be one or an array of (or null if referred).
 	
-	/* help attributes
+	/* helper attributes
 	 */
 	public $isArray = false;
 	
@@ -23,7 +23,6 @@ class XBMC_JSONRPC_Param {
 
 	
 	public function __construct(stdClass $obj) {
-		
 		if (!is_object($obj)) {
 			throw new Exception('"'.$obj.'" is not an object.');
 		}
@@ -53,24 +52,19 @@ class XBMC_JSONRPC_Param {
 	
 	private function parseType($obj) {
 		if (!isset($obj->type)) {
+			if (!array_key_exists($this->ref, XBMC_JSONRPC_Type::$global)) {
+				throw new Exception('Cannot find reference "'.$this->ref.'" in types array!');
+			}
+			$this->type = XBMC_JSONRPC_Type::$global[$this->ref];
 			return;
 		}
 		if (is_array($obj->type)) {
 			$this->type = array();
 			foreach ($obj->type as $type) {
-				$this->type[] = new XBMC_JSONRPC_ParamType($type);
+				$this->type[] = new XBMC_JSONRPC_ParamType($type, '', ucwords($this->name));
 			}
-		} else if (is_object($this->type)) {
-			$this->type = new XBMC_JSONRPC_ParamType($obj->type);
 		} else {
-			if ($this->type == 'array') {
-				if (!isset($this->items)) {
-					throw new Exception('Type is "array", but no "items" attribute found.');
-				}
-				$this->type = new XBMC_JSONRPC_ParamType($obj->items);
-			} else {
-				$this->type = new XBMC_JSONRPC_ParamType($obj);
-			}
+			$this->type = new XBMC_JSONRPC_ParamType($obj);
 		}
 	}
 	
@@ -88,9 +82,11 @@ class XBMC_JSONRPC_Param {
 	}
 	
 	/**
+	 * Returns the "normalized" type, meaning if an array is returned, this 
+	 * returns the type of the array's elements.
 	 * @return XBMC_JSONRPC_Type
 	 */
-	public function getType() {
+	public function getNormalizedType() {
 		if (!$this->type && !$this->ref) {
 			print_r($this);
 			throw new Exception('Cannot return type if "type" AND reference are unknown.');
@@ -103,5 +99,4 @@ class XBMC_JSONRPC_Param {
 		} 
 		return $this->type;
 	}
-
 }

@@ -42,6 +42,7 @@ class XBMC_JSONRPC_Method {
 	const PACKAGE = 'org.xbmc.android.jsonrpc.api.callgen';
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',
+		'AbstractCall' => 'org.xbmc.android.jsonrpc.api.call.AbstractCall',
 		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.model.AbstractModel',
 		'JSONArray' => 'org.json.JSONArray',
 		'JSONObject' => 'org.json.JSONObject',
@@ -92,7 +93,7 @@ class XBMC_JSONRPC_Method {
 	 * of types.
 	 */
 	private function generateConstructors() {
-		$types = array();
+		$types = array(); // values are all objects!
 		$names = array();
 		$listParams = array();
 		
@@ -101,13 +102,12 @@ class XBMC_JSONRPC_Method {
 			if (is_array($param->type)) {
 				$tt = array();
 				foreach ($param->type as $type) {
-//					print_r($type->getInstance());
 					$tt[] = $type;
 				}
 				$types[] = $tt;
 				$names[] = $param->name;
 			} else {
-				$types[] = array($param->getType());
+				$types[] = array($param->type);
 			}
 			$names[] = $param->name;
 		}
@@ -115,7 +115,7 @@ class XBMC_JSONRPC_Method {
 		if (!count($types)) {
 			return;
 		}
-		
+				
 		/* 
 		 * now we have $types, where first the dimension are the params and 
 		 * second dimension are the types available for each param.
@@ -158,7 +158,6 @@ class XBMC_JSONRPC_Method {
 				}
 			}
 		} while (true);
-		
 		$this->constructs = $constructors;
 	}
 
@@ -209,7 +208,6 @@ class XBMC_JSONRPC_Method {
 		} else {
 			$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $obj->returns);
 		}
-	//	print_r($this->returns->arrayType->getInstance());exit;
 	}
 	
 	private function assertKeys(stdClass $obj, array $values) {
@@ -259,6 +257,10 @@ class XBMC_JSONRPC_Method {
 //		self::compileAll();
 	}
 	
+	public static function addModelImport($model) {
+		self::$currentImports[] = XBMC_JSONRPC_Type::PACKAGE.'.'.$model;
+	}
+	
 	public static function addImport($import) {
 		self::$currentImports[] = self::$imports[$import];
 		self::$currentImports = array_unique(self::$currentImports);
@@ -278,6 +280,7 @@ class XBMC_JSONRPC_Method {
 				$inner = '';
 				
 				$ns .= "\npublic final class ".$namespace." {\n";
+				$ns .= "\n	private final static String PREFIX = \"".$namespace.".\";\n\n";
 				foreach ($classes as $c) {
 					$inner .= $c->compile();
 				}
@@ -304,16 +307,33 @@ class XBMC_JSONRPC_Method {
 		}
 	}	
 	
-	public function getReturnType() {
+	public function getReturnType($notNative = false) {
 		if (isset($this->returns->arrayType)) {
-			return $this->returns->arrayType->getInstance()->getJavaType();
+			return $this->returns->arrayType->getInstance()->getJavaType($notNative);
 		} else {
-			return $this->returns->getInstance()->getJavaType();
+			return $this->returns->getInstance()->getJavaType($notNative);
+		}
+	}
+	
+	public function getReturn() {
+		if (isset($this->returns->arrayType)) {
+			return $this->returns->arrayType->getInstance();
+		} else {
+			return $this->returns->getInstance();
 		}
 	}
 	
 	private function compile() {
+		
 		echo "... Compiling ".$this->name."...\n";
+		
+		self::addImport('AbstractCall');
+		self::addImport('JSONException');
+		if (strpos($this->getReturnType(), '.')) {
+			self::addModelImport($this->getReturn()->javaClass);
+		} 
+
+		// header
 		$i = 1;
 		$content = $this->r($i, '/**');
 		if ($this->description) {
@@ -326,8 +346,10 @@ class XBMC_JSONRPC_Method {
 		}
 		$content .= $this->r($i, ' * <i>This class was generated automatically from XBMC\'s JSON-RPC introspect.</i>');
 		$content .= $this->r($i, ' */');
-		$content .= $this->r($i, sprintf('public static class %s extends AbstractCall<%s> { ', $this->m, $this->getReturnType()));
+		$content .= $this->r($i, sprintf('public static class %s extends AbstractCall<%s> { ', $this->m, $this->getReturnType(true)));
 		$content .= $this->r($i, sprintf('	private static final String NAME = "%s";', $this->m));
+
+		// constructors
 		foreach ($this->constructs as $c) {
 			$content .= $this->compileConstructor($c);
 		}
@@ -337,20 +359,26 @@ class XBMC_JSONRPC_Method {
 		}
 		foreach ($this->params as $param) {
 			foreach ($param->getInnerTypes() as $type) {
-				print "--- ".$type->name."\n";
 				$content .= $type->compile($i);
 			}
 		}
-		
-		$content .= $this->r($i, sprintf('} '));
+		$i++;
+		$content .= $this->r($i, '@Override');
+		$content .= $this->r($i, 'protected String getName() {');
+		$content .= $this->r($i, '	return PREFIX + NAME;');
+		$content .= $this->r($i, '}');
+		$content .= $this->r($i, '@Override');
+		$content .= $this->r($i, 'protected boolean returnsList() {');
+		$content .= $this->r($i, '	return true;');
+		$content .= $this->r($i, '}');
+				
+		$i--;
+		$content .= $this->r($i, '}');
 		
 		return $content;
 	}
 	
 	private function compileConstructor($c) {
-		
-		// args
-		$args = '';
 		// count the number of arrays first
 		$n = 0;
 		foreach ($c as $name => $type) {
@@ -365,7 +393,8 @@ class XBMC_JSONRPC_Method {
 			unset($c[$a]);
 			$c[$a] = $aa;
 		}
-		
+		// args
+		$args = '';
 		foreach ($c as $name => $type) {
 			$args .= $type->getJavaParamType($n == 1).' '.$name.', ';
 		}

@@ -70,8 +70,8 @@ class XBMC_JSONRPC_Type {
 	
 	/* java mappings
 	 */
-	private $javaClass = null;
-	private $javaType = null;
+	public $javaClass = null;
+	public $javaType = null;
 	
 	/* collections
 	 */
@@ -258,7 +258,7 @@ class XBMC_JSONRPC_Type {
 		return count($types) == 1 && $types[0] == 'object';
 	}
 
-	public function getJavaType() {
+	public function getJavaType($notNative = false) {
 		if ($this->isInner) {
 			return $this->javaType;
 		} else {
@@ -272,15 +272,15 @@ class XBMC_JSONRPC_Type {
 				} else {
 					switch ($this->getType()) {
 						case 'integer':
-							return $this->isArray ? 'Integer' : 'int';
+							return $this->isArray || $notNative ? 'Integer' : 'int';
 						case 'any':
 						case 'null':
 						case 'string':
 							return 'String';
 						case 'boolean':
-							return $this->isArray ? 'Boolean' : 'boolean';
+							return $this->isArray || $notNative ? 'Boolean' : 'boolean';
 						case 'number':
-							return $this->isArray ? 'Double' : 'double';
+							return $this->isArray || $notNative ? 'Double' : 'double';
 						case 'object':
 							return $this->javaClass.'.'.$this->javaType;
 						default:
@@ -291,7 +291,7 @@ class XBMC_JSONRPC_Type {
 		}
 	}
 	public function getJavaParamType($niceArrays = false) {
-		if ($this->isInner) {
+		if ($this->isInner && $this->javaType) {
 			return $this->javaType;
 		} else {
 			$type = $this->getType();
@@ -500,10 +500,6 @@ class XBMC_JSONRPC_Type {
 	 */
 	public function assert() {
 		$this->p('*** ASSERTING: '.$this->name);
-		if ($this->getJavaType() == 'objectobjectobjectobjectobjectobject') {
-			print_r($this);
-			exit;
-		}
 		$this->assertRef();
 		$this->assertType();
 		$this->assertArray();
@@ -968,7 +964,7 @@ class XBMC_JSONRPC_Type {
 	}
 	public function compileEnum($i) {
 		$this->p('*** COMPILE ENUM: '.$this->name);
-		$content = $this->r($i, sprintf('	public interface %s {', $this->javaType)); 
+		$content = $this->r($i, sprintf('	public interface %s {', $this->javaType ? $this->javaType : $this->name)); 
 		if (count($this->enums)) {
 			foreach($this->enums as $enum) {
 				$content .= $this->r($i, sprintf('		public final String %s = "%s";', strtoupper($enum), $enum)); 

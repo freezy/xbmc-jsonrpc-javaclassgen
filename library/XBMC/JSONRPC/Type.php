@@ -85,7 +85,7 @@ class XBMC_JSONRPC_Type {
 	private static $ignoreTypes = array('Array.Integer', 'Array.String'); // ignore these too
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',
-		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.model.AbstractModel',
+		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.AbstractModel',
 		'JSONArray' => 'org.json.JSONArray',
 		'JSONObject' => 'org.json.JSONObject',
 		'JSONException' => 'org.json.JSONException',

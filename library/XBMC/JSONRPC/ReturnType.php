@@ -12,6 +12,9 @@ class XBMC_JSONRPC_ReturnType extends XBMC_JSONRPC_Type {
 		
 		parent::__construct(1, $name, $obj, true, false, null);
 		$this->parseJavaName($outerClass);
+		foreach ($this->properties as $prop) {
+			$prop->parseJavaName();
+		}
 	}
 	
 	/**

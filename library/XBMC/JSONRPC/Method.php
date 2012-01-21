@@ -42,8 +42,8 @@ class XBMC_JSONRPC_Method {
 	const PACKAGE = 'org.xbmc.android.jsonrpc.api.callgen';
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',
-		'AbstractCall' => 'org.xbmc.android.jsonrpc.api.call.AbstractCall',
-		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.model.AbstractModel',
+		'AbstractCall' => 'org.xbmc.android.jsonrpc.api.AbstractCall',
+		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.AbstractModel',
 		'JSONArray' => 'org.json.JSONArray',
 		'JSONObject' => 'org.json.JSONObject',
 		'JSONException' => 'org.json.JSONException',

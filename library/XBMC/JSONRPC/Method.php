@@ -454,6 +454,9 @@ class XBMC_JSONRPC_Method {
 		$content .= $this->r($i, sprintf(' */'));
 		$content .= $this->r($i, sprintf('public %s(%s) throws JSONException {', $this->m, $args));
 		$content .= $this->r($i, sprintf('	super();'));
+		foreach ($c as $name => $type) {
+			$content .= $this->r($i + 1, sprintf('addParameter("%s", %s);', $name, $name));
+		}
 		$content .= $this->r($i, sprintf('}'));
 		return $content;
 	}

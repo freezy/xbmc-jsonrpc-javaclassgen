@@ -86,6 +86,7 @@ class XBMC_JSONRPC_Type {
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',
 		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.AbstractModel',
+		'JSONSerializable' => 'org.xbmc.android.jsonrpc.api.JSONSerializable',
 		'JSONArray' => 'org.json.JSONArray',
 		'JSONObject' => 'org.json.JSONObject',
 		'JSONException' => 'org.json.JSONException',
@@ -926,7 +927,12 @@ class XBMC_JSONRPC_Type {
 		}
 		$content .= $this->r($i, '	 * <i>This class was generated automatically from XBMC\'s JSON-RPC introspect.</i>');
 		$content .= $this->r($i, '	 */');
-		$content .= $this->r($i, sprintf('	public static class %s%s {', $this->javaType, $this->getJavaParent() ? ' extends '.$this->getJavaParent() : ''));
+		if ($this->getJavaParent()) {
+			$content .= $this->r($i, sprintf('	public static class %s extends %s{', $this->javaType, $this->getJavaParent()));
+		} else {
+			$content .= $this->r($i, sprintf('	public static class %s implements JSONSerializable {', $this->javaType));
+			self::addImport('JSONSerializable');
+		}
 		if (!$this->isInner) {
 			$content .= $this->r($i, sprintf('		public final static String TYPE = "%s";', $this->name));
 		}
@@ -956,6 +962,32 @@ class XBMC_JSONRPC_Type {
 		
 		// native constructor
 		$content .= $this->compileNativeConstructor($i);
+		
+		// json serializer
+		$content .= $this->r($i, sprintf('		@Override'));
+		$content .= $this->r($i, sprintf('		public JSONObject toJSONObject() throws JSONException {'));
+		$content .= $this->r($i, sprintf('			final JSONObject obj = new JSONObject();'));
+		foreach ($this->properties as $name => $property) {
+			$p = $property->getInstance();
+			// native types and native array types we can add directly
+			if ($property->isNative() || ($p->getArrayType() && in_array($p->getArrayType()->getType(), array('string', 'integer')))) {
+				$content .= $this->r($i, sprintf('			obj.put("%s", %s);', $name, $name));
+			// custom object need special serialization
+			} elseif ($property->getInstance()->arrayType) {
+				$content .= $this->r($i, sprintf('			final JSONArray %sArray = new JSONArray();', $name));
+				$content .= $this->r($i, sprintf('			for (%s item : %s) {', $property->getArrayType()->getJavaType(), $name));
+				$content .= $this->r($i, sprintf('				%sArray.put(item.toJSONObject());', $name));
+				$content .= $this->r($i, sprintf('			}'));
+				$content .= $this->r($i, sprintf('			%sArray.put(%sArray);', $name, $name));
+				$content .= $this->r($i, sprintf('			obj.put("%s", %sArray);', $name, $name));						
+			} else {
+				$content .= $this->r($i, sprintf('			obj.put("%s", %s.toJSONObject());', $name, $name));
+			}
+			XBMC_JSONRPC_Method::addImport('JSONObject');
+			XBMC_JSONRPC_Method::addImport('JSONException');
+		}
+		$content .= $this->r($i, sprintf('			return obj;'));
+		$content .= $this->r($i, sprintf('		}'));
 		
 		// inner "multi" types classes
 		foreach ($this->innerTypes as $type) {

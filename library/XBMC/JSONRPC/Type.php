@@ -263,7 +263,7 @@ class XBMC_JSONRPC_Type {
 
 	public function getJavaType($notNative = false, $includeOuterClassInInnerName = false) {
 		if ($this->isInner) {
-			return $includeOuterClassInInnerName ? $this->javaClass.'.'.$this->javaType : $this->javaType;
+			return $includeOuterClassInInnerName && $this->javaClass ? $this->javaClass.'.'.$this->javaType : $this->javaType;
 		} else {
 			$type = $this->getType();
 			if (is_array($type)) {

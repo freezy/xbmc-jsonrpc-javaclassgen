@@ -40,8 +40,10 @@ class XBMC_JSONRPC_Method {
 	/* configuration
 	 */
 	const PACKAGE = 'org.xbmc.android.jsonrpc.api.callgen';
+	const UNDEFINED_RESULT = 'UndefinedResult';
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',
+		'UndefinedResult' => 'org.xbmc.android.jsonrpc.api.UndefinedResult',
 		'AbstractCall' => 'org.xbmc.android.jsonrpc.api.AbstractCall',
 		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.AbstractModel',
 		'JSONArray' => 'org.json.JSONArray',
@@ -345,7 +347,10 @@ class XBMC_JSONRPC_Method {
 		self::addImport('JSONException');
 		if (strpos($this->getReturnType(), '.') && !$this->returns->isInnerType) {
 			self::addModelImport($this->getReturn()->javaClass);
-		} 
+		}
+		if ($this->getReturnType() == self::UNDEFINED_RESULT) {
+			self::addImport(self::UNDEFINED_RESULT);
+		}
 
 		// header
 		$i = 1;

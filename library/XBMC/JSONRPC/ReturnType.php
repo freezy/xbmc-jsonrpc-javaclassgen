@@ -13,10 +13,19 @@ class XBMC_JSONRPC_ReturnType extends XBMC_JSONRPC_Type {
 		$this->isInnerType = $outerClass ? true : false;
 		
 		parent::__construct(1, $name, $obj, true, false, null);
-		$this->parseJavaName($outerClass);
-		foreach ($this->properties as $prop) {
-			$prop->parseJavaName();
+		
+		// undefined response format, like JSONRPC.Introspect, XBMC.GetInfoBooleans and XBMC.GetInfoLabels
+		if ($obj->type == 'object' && !$this->extends && !$this->ref && !count($this->properties)) {
+			$this->javaType = XBMC_JSONRPC_Method::UNDEFINED_RESULT;
+			$this->isInner = true;
+		} else {
+			$this->parseJavaName($outerClass);
+			foreach ($this->properties as $prop) {
+				$prop->parseJavaName();
+			}
 		}
+		
+		
 	}
 	
 	/**

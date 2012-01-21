@@ -23,7 +23,7 @@ class XBMC_JSONRPC_Method {
 	public $m;  // the method name, without namespace.
 	/**
 	 * Return type
-	 * @var XBMC_JSONRPC_Type
+	 * @var XBMC_JSONRPC_ReturnType
 	 */
 	public $returns;
 	public $returnsArray = false;
@@ -208,6 +208,7 @@ class XBMC_JSONRPC_Method {
 			if ($total - $ignore == 1) {
 				if (isset($lastNonIgnored->items)) {
 					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $lastNonIgnored->items);
+					$this->returns->returnsArray = true;
 				} else {
 					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $lastNonIgnored);
 				}
@@ -405,9 +406,9 @@ class XBMC_JSONRPC_Method {
 		$content .= $this->r($i, '}');
 		$content .= $this->r($i, '@Override');
 		$content .= $this->r($i, 'protected boolean returnsList() {');
-		$content .= $this->r($i, '	return true;');
+		$content .= $this->r($i, sprintf('	return %s;', $this->returns->returnsArray ? 'true' : 'false'));
 		$content .= $this->r($i, '}');
-				
+		
 		$i--;
 		$content .= $this->r($i, '}');
 		

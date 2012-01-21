@@ -3,6 +3,7 @@
 class XBMC_JSONRPC_ReturnType extends XBMC_JSONRPC_Type {
 	
 	public $isInnerType;
+	public $returnsArray = false;
 	
 	public function __construct($name, $obj, $outerClass = '') {
 		
@@ -15,7 +16,7 @@ class XBMC_JSONRPC_ReturnType extends XBMC_JSONRPC_Type {
 		parent::__construct(1, $name, $obj, true, false, null);
 		
 		// undefined response format, like JSONRPC.Introspect, XBMC.GetInfoBooleans and XBMC.GetInfoLabels
-		if ($obj->type == 'object' && !$this->extends && !$this->ref && !count($this->properties)) {
+		if (isset($obj->type) && $obj->type == 'object' && !$this->extends && !$this->ref && !count($this->properties)) {
 			$this->javaType = XBMC_JSONRPC_Method::UNDEFINED_RESULT;
 			$this->isInner = true;
 		} else {
@@ -24,8 +25,6 @@ class XBMC_JSONRPC_ReturnType extends XBMC_JSONRPC_Type {
 				$prop->parseJavaName();
 			}
 		}
-		
-		
 	}
 	
 	/**
@@ -34,6 +33,6 @@ class XBMC_JSONRPC_ReturnType extends XBMC_JSONRPC_Type {
 	 * @return XBMC_JSONRPC_Type
 	 */
 	public function getNormalizedType() {
-		return $this->isArray() ? $this->arrayType : $this;
+		return $this->getArrayType() ? $this->arrayType : $this;
 	}
 }

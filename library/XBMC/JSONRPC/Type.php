@@ -258,7 +258,7 @@ class XBMC_JSONRPC_Type {
 		return count($types) == 1 && $types[0] == 'object';
 	}
 	public function isArray() {
-		return $this->getArrayType() ? true : false;
+		return $this->getInstance()->getArrayType() ? true : false;
 	}
 
 	public function getJavaType($notNative = false, $includeOuterClassInInnerName = false) {

@@ -244,7 +244,7 @@ class XBMC_JSONRPC_Type {
 		return self::$global[$this->ref];
 	}
 	public function isNative() {
-		return in_array($this->getType(), array('string', 'integer', 'number', 'null', 'boolean'));
+		return in_array($this->getType(), array('string', 'integer', 'number', 'null', 'boolean', 'any'));
 	}
 	public function isMultiObjectType() {
 		$obj = $this->getType();
@@ -970,7 +970,7 @@ class XBMC_JSONRPC_Type {
 		foreach ($this->properties as $name => $property) {
 			$p = $property->getInstance();
 			// native types and native array types we can add directly
-			if ($property->isNative() || ($p->getArrayType() && in_array($p->getArrayType()->getType(), array('string', 'integer')))) {
+			if ($property->isNative() || ($p->getArrayType() && in_array($p->getArrayType()->getType(), array('string', 'integer', 'any')))) {
 				$content .= $this->r($i, sprintf('			obj.put("%s", %s);', $name, $name));
 			// custom object need special serialization
 			} elseif ($property->getInstance()->arrayType) {

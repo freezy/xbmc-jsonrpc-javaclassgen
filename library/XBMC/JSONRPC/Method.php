@@ -176,9 +176,14 @@ class XBMC_JSONRPC_Method {
 		if (!isset($obj->returns)) {
 			throw new Exception('No return type set for method "'.$this->name.'".');
 		}
+		$props = null;
 		if (isset($obj->returns->properties)) {
+			$props = $obj->returns->properties;
+		} else if (isset($obj->returns->items->properties)) {
+			$props = $obj->returns->items->properties;
+		}
+		if ($props) {
 			$i = 0;
-			$isArray = isset($obj->returns->properties->limits);
 			// check if there is only 1 prop besides the ones we ignore
 			$ignore = 0;
 			$total = 0;
@@ -187,7 +192,7 @@ class XBMC_JSONRPC_Method {
 			$returnObject->properties = new stdClass();
 			$returnObject->type = 'object';
 			$lastNonIgnored = null;
-			foreach ($obj->returns->properties as $a => $r) {
+			foreach ($props as $a => $r) {
 				if (in_array($a, self::$listReturnNames)) {
 					$ignore++;
 				} else {
@@ -197,6 +202,7 @@ class XBMC_JSONRPC_Method {
 				}
 				$total++;
 			}
+			
 			if ($total - $ignore == 1) {
 				if (isset($lastNonIgnored->items)) {
 					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $lastNonIgnored->items);
@@ -421,7 +427,11 @@ class XBMC_JSONRPC_Method {
 		// args
 		$args = '';
 		foreach ($c as $name => $type) {
-			$args .= $type->getJavaParamType($n == 1).' '.$name.', ';
+			$class = $type->getJavaParamType($n == 1);
+			$args .= $class.' '.$name.', ';
+			if (preg_match('/[^\.]\.[^\.]/', $class)) {
+				self::addModelImport($type->javaClass);
+			}
 		}
 		$args = substr($args, 0, -2);
 		

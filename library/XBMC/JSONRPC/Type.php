@@ -427,10 +427,11 @@ class XBMC_JSONRPC_Type {
 		if ($this->extends) {
 			return $this->getExtends()->getJavaType();
 		} else {
-			if ($this->isInner) {
+			if ($this->isInner && !isset($this->isInnerType)) {
 				return null;
 			} else {
 				self::addImport('AbstractModel');
+				XBMC_JSONRPC_Method::addImport('AbstractModel');
 				return 'AbstractModel';
 			}
 		}
@@ -928,8 +929,13 @@ class XBMC_JSONRPC_Type {
 		if (!$this->isInner) {
 			$content .= $this->r($i, sprintf('		public final static String TYPE = "%s";', $this->name));
 		}
+		
+		// class members
 		foreach ($this->properties as $name => $property) {
 			$content .= $this->r($i, sprintf('		public final %s %s;', $property->getJavaType(), $name));
+			if (preg_match('/[^\.]\.[^\.]/', $property->getJavaType())) {
+				XBMC_JSONRPC_Method::addModelImport($property->javaClass);
+			}
 		}
 		
 		// json constructor

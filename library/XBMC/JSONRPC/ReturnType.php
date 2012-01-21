@@ -2,13 +2,15 @@
 
 class XBMC_JSONRPC_ReturnType extends XBMC_JSONRPC_Type {
 	
+	public $isInnerType;
+	
 	public function __construct($name, $obj, $outerClass = '') {
 		
 		if (!is_object($obj)) {
 			throw new Exception('"'.$obj.'" is not an object.');
 		}
 		
-		$this->isInner = $outerClass ? true : false;
+		$this->isInnerType = $outerClass ? true : false;
 		
 		parent::__construct(1, $name, $obj, true, false, null);
 		$this->parseJavaName($outerClass);

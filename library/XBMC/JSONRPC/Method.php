@@ -343,7 +343,7 @@ class XBMC_JSONRPC_Method {
 		
 		self::addImport('AbstractCall');
 		self::addImport('JSONException');
-		if (strpos($this->getReturnType(), '.') && !$this->returns->isInner) {
+		if (strpos($this->getReturnType(), '.') && !$this->returns->isInnerType) {
 			self::addModelImport($this->getReturn()->javaClass);
 		} 
 

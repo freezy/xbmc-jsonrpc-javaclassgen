@@ -30,7 +30,7 @@ class XBMC_JSONRPC_ParamType extends XBMC_JSONRPC_Type {
 			} else {
 				$resetName = true;
 			}
-			$this->isInner = true;
+			$this->isInnerType = true;
 		}
 		return $resetName;
 	}

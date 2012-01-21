@@ -10,6 +10,9 @@ class XBMC_JSONRPC_ParamType extends XBMC_JSONRPC_Type {
 
 		$resetName = $this->parseName($nameSuffix, $name);
 		$this->parseJavaName();
+		foreach ($this->properties as $prop) {
+			$prop->parseJavaName();
+		}
 		if ($resetName && $name) {
 			$this->name = $name;
 		}

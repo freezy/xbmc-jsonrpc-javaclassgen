@@ -271,6 +271,7 @@ class XBMC_JSONRPC_Type {
 			} else {
 				if ($this->getArrayType()) {
 					self::addImport('ArrayList');
+					XBMC_JSONRPC_Method::addImport('ArrayList');
 					return 'ArrayList<'.$this->getArrayType()->getJavaType().'>';
 				} else {
 					switch ($this->getType()) {

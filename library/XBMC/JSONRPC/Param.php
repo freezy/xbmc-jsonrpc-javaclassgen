@@ -70,7 +70,11 @@ class XBMC_JSONRPC_Param {
 	
 	public function getInnerTypes() {
 		if (!is_array($this->type)) {
-			return array();
+			if ($this->type->isInner) {
+				return array($this->type);
+			} else {
+				return array();
+			}
 		}
 		$types = array();
 		foreach ($this->type as $type) {

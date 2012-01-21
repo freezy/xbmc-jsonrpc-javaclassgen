@@ -81,22 +81,4 @@ class XBMC_JSONRPC_Param {
 		return $types; 
 	}
 	
-	/**
-	 * Returns the "normalized" type, meaning if an array is returned, this 
-	 * returns the type of the array's elements.
-	 * @return XBMC_JSONRPC_Type
-	 */
-	public function getNormalizedType() {
-		if (!$this->type && !$this->ref) {
-			print_r($this);
-			throw new Exception('Cannot return type if "type" AND reference are unknown.');
-		}
-		if ($this->ref) {
-			if (!array_key_exists($this->ref, XBMC_JSONRPC_Type::$global)) {
-				throw new Exception('Cannot find reference "'.$this->ref.'" in types array!');
-			}
-			return XBMC_JSONRPC_Type::$global[$this->ref];
-		} 
-		return $this->type;
-	}
 }

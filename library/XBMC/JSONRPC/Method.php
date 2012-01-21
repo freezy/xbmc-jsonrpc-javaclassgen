@@ -186,23 +186,25 @@ class XBMC_JSONRPC_Method {
 			$returnObject = new stdClass();
 			$returnObject->properties = new stdClass();
 			$returnObject->type = 'object';
+			$lastNonIgnored = null;
 			foreach ($obj->returns->properties as $a => $r) {
 				if (in_array($a, self::$listReturnNames)) {
 					$ignore++;
 				} else {
 					$attr = $a;
 					$returnObject->properties->$a = $r;
+					$lastNonIgnored = $r;
 				}
 				$total++;
 			}
 			if ($total - $ignore == 1) {
-				if (isset($r->items)) {
-					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $r->items);
+				if (isset($lastNonIgnored->items)) {
+					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $lastNonIgnored->items);
 				} else {
-					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $r);
+					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $lastNonIgnored);
 				}
 			} else {
-				$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $returnObject, true);
+				$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $returnObject, $this->m);
 				$this->innerClasses[] = $this->returns;
 			}
 		} else {
@@ -308,10 +310,16 @@ class XBMC_JSONRPC_Method {
 	}	
 	
 	public function getReturnType($notNative = false) {
-		if (isset($this->returns->arrayType)) {
-			return $this->returns->arrayType->getInstance()->getJavaType($notNative);
+		if (isset($this->returns->getInstance()->arrayType)) {
+			$type = $this->returns->getInstance()->arrayType->getInstance();
 		} else {
-			return $this->returns->getInstance()->getJavaType($notNative);
+			$type = $this->returns->getInstance();
+		}
+			
+		if ($type->isInner) {
+			return $type->getJavaType($notNative, true);
+		} else {
+			return $type->getJavaType($notNative);
 		}
 	}
 	
@@ -329,7 +337,7 @@ class XBMC_JSONRPC_Method {
 		
 		self::addImport('AbstractCall');
 		self::addImport('JSONException');
-		if (strpos($this->getReturnType(), '.')) {
+		if (strpos($this->getReturnType(), '.') && !$this->returns->isInner) {
 			self::addModelImport($this->getReturn()->javaClass);
 		} 
 
@@ -369,6 +377,11 @@ class XBMC_JSONRPC_Method {
 		
 		foreach ($this->innerClasses as $c) {
 			$content .= $c->compile($i - 1);
+		}
+		if (count($this->innerClasses)) {
+			self::addImport('ArrayList');
+			self::addImport('JSONObject');
+			self::addImport('JSONArray');
 		}
 		foreach ($this->params as $param) {
 			foreach ($param->getInnerTypes() as $type) {

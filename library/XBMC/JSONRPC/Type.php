@@ -257,10 +257,13 @@ class XBMC_JSONRPC_Type {
 		$types = array_unique($types);
 		return count($types) == 1 && $types[0] == 'object';
 	}
+	public function isArray() {
+		return $this->getArrayType() ? true : false;
+	}
 
-	public function getJavaType($notNative = false) {
+	public function getJavaType($notNative = false, $includeOuterClassInInnerName = false) {
 		if ($this->isInner) {
-			return $this->javaType;
+			return $includeOuterClassInInnerName ? $this->javaClass.'.'.$this->javaType : $this->javaType;
 		} else {
 			$type = $this->getType();
 			if (is_array($type)) {
@@ -603,9 +606,9 @@ class XBMC_JSONRPC_Type {
 			$this->p('  - We\'re an array ('.$this->arrayType->type.').');
 		}
 	}
-	protected function parseJavaName() {
+	protected function parseJavaName($class = '') {
 		$parts = explode('.', $this->getInstance()->name);
-		$this->javaClass = $parts[0].'Model';
+		$this->javaClass = $class ? $class : $parts[0].'Model';
 		switch (count($parts)) {
 			case 1:
 				$this->javaClass = 'GlobalModel';

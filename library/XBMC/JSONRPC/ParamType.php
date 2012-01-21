@@ -18,7 +18,7 @@ class XBMC_JSONRPC_ParamType extends XBMC_JSONRPC_Type {
 	private function parseName($nameSuffix) {
 		$resetName = false;
 		if ($this->ref) {
-			$name = str_replace('.', '', $this->ref);
+			$this->name = str_replace('.', '', $this->ref);
 		} else {
 			if (count($this->properties )) {
 				$propkeys = array();
@@ -26,7 +26,7 @@ class XBMC_JSONRPC_ParamType extends XBMC_JSONRPC_Type {
 					$propkeys[] = ucwords($key);
 				}
 				sort($propkeys);
-				$name = implode('', $propkeys).$nameSuffix;
+				$this->name = implode('', $propkeys).$nameSuffix;
 			} else {
 				$resetName = true;
 			}

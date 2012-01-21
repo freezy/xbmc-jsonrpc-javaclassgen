@@ -372,7 +372,7 @@ class XBMC_JSONRPC_Method {
 		}
 		foreach ($this->params as $param) {
 			foreach ($param->getInnerTypes() as $type) {
-				$content .= $type->compile($i - 1);
+				$content .= $type->compile($i - 1, false);
 			}
 		}
 		$content .= $this->r($i, '@Override');

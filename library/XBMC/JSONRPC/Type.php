@@ -818,7 +818,7 @@ class XBMC_JSONRPC_Type {
 			}
 		}
 	}	
-	public function compile($i) {
+	public function compile($i, $jsonConstructor = true) {
 		
 		if (in_array($this->name, self::$emptyTypes)) {
 			$this->p('*** NOT COMPILING empty type '.$this->name.'.');
@@ -841,7 +841,7 @@ class XBMC_JSONRPC_Type {
 		if (in_array($this->name, self::$emptyTypes) || count($this->enums)) {
 			return $this->compileEnum($i);
 		} else {
-			return $this->compileClass($i);
+			return $this->compileClass($i, $jsonConstructor);
 		}
 	
 	}
@@ -901,7 +901,7 @@ class XBMC_JSONRPC_Type {
 		$content .= $this->r($i, sprintf('}'));
 		return $content;
 	}
-	public function compileClass($i) {
+	public function compileClass($i, $jsonConstructor = true) {
 		
 		self::addImport('JSONArray');
 		self::addImport('JSONObject');
@@ -930,17 +930,19 @@ class XBMC_JSONRPC_Type {
 		}
 		
 		// json constructor
-		$content .= $this->r($i, sprintf('		public %s(JSONObject obj) throws JSONException {', $this->javaType));
-		if ($this->extends) {
-			$content .= $this->r($i, sprintf('			super(obj);'));
+		if ($jsonConstructor) {
+			$content .= $this->r($i, sprintf('		public %s(JSONObject obj) throws JSONException {', $this->javaType));
+			if ($this->extends) {
+				$content .= $this->r($i, sprintf('			super(obj);'));
+			}
+			if (!$this->isInner) {
+				$content .= $this->r($i, sprintf('			mType = TYPE;'));
+			}
+			foreach ($this->properties as $name => $property) {
+				$content .= $this->r($i, sprintf('			%s = %s;', $name, $property->getJavaValue($name)));
+			}
+			$content .= $this->r($i, sprintf('		}'));
 		}
-		if (!$this->isInner) {
-			$content .= $this->r($i, sprintf('			mType = TYPE;'));
-		}
-		foreach ($this->properties as $name => $property) {
-			$content .= $this->r($i, sprintf('			%s = %s;', $name, $property->getJavaValue($name)));
-		}
-		$content .= $this->r($i, sprintf('		}'));
 		
 		// native constructor
 		$content .= $this->compileNativeConstructor($i);
@@ -951,7 +953,9 @@ class XBMC_JSONRPC_Type {
 		}
 		
 		// array creator
-		$content .= $this->getJavaArrayCreator($i);
+		if ($jsonConstructor) {
+			$content .= $this->getJavaArrayCreator($i);
+		}
 
 		// inner classes
 		foreach ($this->getInnerClasses() as $class) {

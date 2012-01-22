@@ -41,6 +41,8 @@ class XBMC_JSONRPC_Method {
 	 */
 	const PACKAGE = 'org.xbmc.android.jsonrpc.api.call';
 	const UNDEFINED_RESULT = 'UndefinedResult';
+	const RESULT = 'RESULT';
+	const RESULTS = 'RESULTS';
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',
 		'UndefinedResult' => 'org.xbmc.android.jsonrpc.api.UndefinedResult',
@@ -204,7 +206,6 @@ class XBMC_JSONRPC_Method {
 				}
 				$total++;
 			}
-			
 			if ($total - $ignore == 1) {
 				$this->returnAttr = $attr;
 				if (isset($lastNonIgnored->items)) {
@@ -212,6 +213,9 @@ class XBMC_JSONRPC_Method {
 					$this->returns->returnsArray = true;
 				} else {
 					$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $lastNonIgnored);
+				}
+				if ($this->returns->getInstance()->arrayType) {
+					$this->returns->returnsArray = true;
 				}
 			} else {
 				$this->returns = new XBMC_JSONRPC_ReturnType(ucwords($this->name).'Result', $returnObject, $this->m);
@@ -369,6 +373,9 @@ class XBMC_JSONRPC_Method {
 		$content .= $this->r($i, ' */');
 		$content .= $this->r($i, sprintf('public static class %s extends AbstractCall<%s> { ', $this->m, $this->getReturnType(true)));
 		$content .= $this->r($i, sprintf('	private static final String NAME = "%s";', $this->m));
+		if ($this->returnAttr) {
+			$content .= $this->r($i, sprintf('	public static final String %s = "%s";', self::RESULTS, $this->returnAttr));
+		}
 
 		// constructors
 		$i++;
@@ -395,7 +402,7 @@ class XBMC_JSONRPC_Method {
 			}
 			$content .= $this->r($i, sprintf('@Override'));
 			$content .= $this->r($i, sprintf('protected ArrayList<%s> parseMany(JSONObject obj) throws JSONException {', $this->getReturnType(true)));
-			$content .= $this->r($i, sprintf('	final JSONArray %s = obj.getJSONArray("%s");', $this->returnAttr, $this->returnAttr));
+			$content .= $this->r($i, sprintf('	final JSONArray %s = parseResult(obj).getJSONArray(%s);', $this->returnAttr, self::RESULTS));
 			$content .= $this->r($i, sprintf('	final ArrayList<%s> ret = new ArrayList<%s>(%s.length());', $this->getReturnType(true), $this->getReturnType(true), $this->returnAttr));
 			$content .= $this->r($i, sprintf('	for (int i = 0; i < %s.length(); i++) {', $this->returnAttr));
 			$content .= $this->r($i, sprintf('		final JSONObject item = %s.getJSONObject(i);', $this->returnAttr));
@@ -405,30 +412,31 @@ class XBMC_JSONRPC_Method {
 			$content .= $this->r($i, sprintf('}'));
 			self::addImport('ArrayList');
 			self::addImport('JSONArray');
+			self::addImport('JSONObject');
 		} else {
 			$content .= $this->r($i, sprintf('@Override'));
 			$content .= $this->r($i, sprintf('protected %s parseOne(JSONObject obj) throws JSONException {', $this->getReturnType(true)));
 			switch ($this->getReturn()->type) {
 				case 'integer':
-					$content .= $this->r($i, sprintf('	return obj.getInt("result");'));
+					$content .= $this->r($i, sprintf('	return obj.getInt(%s);', self::RESULT));
 					break;
 				case 'number':
-					$content .= $this->r($i, sprintf('	return obj.getDouble("result");'));
+					$content .= $this->r($i, sprintf('	return obj.getDouble(%s);', self::RESULT));
 					break;
 				case 'boolean':
-					$content .= $this->r($i, sprintf('	return obj.getBoolean("result");'));
+					$content .= $this->r($i, sprintf('	return obj.getBoolean(%s);', self::RESULT));
 					break;
 				case 'null':
 				case 'any':
 				case 'string':
-					$content .= $this->r($i, sprintf('	return obj.getString("result");'));
+					$content .= $this->r($i, sprintf('	return obj.getString(%s);', self::RESULT));
 					break;
 				default:
 					if ($this->getReturnType(true) == self::UNDEFINED_RESULT) {
 						$content .= $this->r($i, sprintf('	return new %s(obj);', self::UNDEFINED_RESULT));
 					} else {
 						if ($this->returnAttr) {
-							$content .= $this->r($i, sprintf('	return new %s(parseResult(obj).getJSONObject("%s"));', $this->getReturnType(true), $this->returnAttr));
+							$content .= $this->r($i, sprintf('	return new %s(parseResult(obj).getJSONObject(%s));', $this->getReturnType(true), self::RESULTS));
 						} else {
 							$content .= $this->r($i, sprintf('	return new %s(parseResult(obj));', $this->getReturnType(true)));
 						}

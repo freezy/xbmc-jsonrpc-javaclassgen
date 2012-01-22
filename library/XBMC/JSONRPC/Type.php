@@ -446,7 +446,7 @@ class XBMC_JSONRPC_Type {
 		$content .= $this->r($i, sprintf(' * @param obj JSONObject containing the list of objects'));
 		$content .= $this->r($i, sprintf(' * @param key Key pointing to the node where the list is stored'));
 		$content .= $this->r($i, sprintf(' */'));
-		$content .= $this->r($i, sprintf('public static ArrayList<%s> %s(JSONObject obj, String key) throws JSONException {', $t, $this->getJavaArrayCreatorMethod()));
+		$content .= $this->r($i, sprintf('static ArrayList<%s> %s(JSONObject obj, String key) throws JSONException {', $t, $this->getJavaArrayCreatorMethod()));
 		$content .= $this->r($i, sprintf('	if (obj.has(key)) {'));
 		$content .= $this->r($i, sprintf('		final JSONArray a = obj.getJSONArray(key);'));
 		$content .= $this->r($i, sprintf('		final ArrayList<%s> l = new ArrayList<%s>(a.length());', $t, $t));
@@ -956,10 +956,16 @@ class XBMC_JSONRPC_Type {
 		
 		// class members
 		foreach ($this->properties as $name => $property) {
-			if (count($property->enums)) {
-				$enums = '<tt>'.implode('</tt>, <tt>', $property->enums).'</tt>'; 
+			if (count($property->enums) || $property->description) {
 				$content .= $this->r($i, sprintf('	/**'));
-				$content .= $this->r($i, sprintf('	 * One of: %s.', $enums));
+				if ($property->description) {
+					$content .= $this->r($i, sprintf('	 * %s.', $property->description));
+					$content .= $this->r($i, sprintf('	 * <p/>'));
+				}
+				if (count($property->enums)) {
+					$enums = '<tt>'.implode('</tt>, <tt>', $property->enums).'</tt>'; 
+					$content .= $this->r($i, sprintf('	 * One of: %s.', $enums));
+				}
 				$content .= $this->r($i, sprintf('	 */'));
 			}
 			$content .= $this->r($i, sprintf('	public final %s %s;', $property->getJavaType(), $name));

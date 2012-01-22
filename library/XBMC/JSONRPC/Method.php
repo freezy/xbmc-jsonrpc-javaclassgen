@@ -502,9 +502,28 @@ class XBMC_JSONRPC_Method {
 		if ($this->description) {
 			$content .= $this->r($i, sprintf(' * %s', $this->description));
 		}
+		$see = '';
 		foreach ($this->params as $param) {
-			$content .= $this->r($i, sprintf(' * @param %s %s', $param->name, $param->description));
+			$desc = '';
+			// comment enums
+			if (is_object($param->type) && count($param->type->getInstance())) {
+				$inst = $param->type->getInstance();
+				if (count($inst->enums)) {
+					$desc = 'One of: <tt>'.implode('</tt>, <tt>', $inst->enums).'</tt>. See constants at {@link '.$inst->javaClass.'.'.$inst->javaType.'}.';
+					$see .= $this->r($i, sprintf(' * @see %s.%s',$inst->javaClass, $inst->javaType));
+				}
+			}
+			// comment list of enums
+			if (isset($param->type->arrayType)) {
+				$inst = $param->type->arrayType->getInstance();
+				if (count($inst->enums)) {
+					$desc = 'One or more of: <tt>'.implode('</tt>, <tt>', $inst->enums).'</tt>. See constants at {@link '.$inst->javaClass.'.'.$inst->javaType.'}.';
+					$see .= $this->r($i, sprintf(' * @see %s.%s',$inst->javaClass, $inst->javaType));
+				}
+			}
+			$content .= $this->r($i, sprintf(' * @param %s %s', $param->name, $param->description ? $this->description.($desc ? ' ('.$desc.')' : '') : $desc));
 		}
+		$content .= $see;
 		$content .= $this->r($i, sprintf(' * @throws JSONException'));
 		$content .= $this->r($i, sprintf(' */'));
 		$content .= $this->r($i, sprintf('public %s(%s) throws JSONException {', $this->m, $args));

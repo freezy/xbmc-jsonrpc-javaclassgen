@@ -278,15 +278,15 @@ class XBMC_JSONRPC_Type {
 				} else {
 					switch ($this->getType()) {
 						case 'integer':
-							return $this->isArray || $notNative ? 'Integer' : 'int';
+							return $this->isArray || $notNative || !$this->required ? 'Integer' : 'int';
 						case 'any':
 						case 'null':
 						case 'string':
 							return 'String';
 						case 'boolean':
-							return $this->isArray || $notNative ? 'Boolean' : 'boolean';
+							return $this->isArray || $notNative || !$this->required ? 'Boolean' : 'boolean';
 						case 'number':
-							return $this->isArray || $notNative ? 'Double' : 'double';
+							return $this->isArray || $notNative || !$this->required ? 'Double' : 'double';
 						case 'object':
 							return $this->javaClass.'.'.$this->javaType;
 						default:
@@ -1052,6 +1052,13 @@ class XBMC_JSONRPC_Type {
 			$content .= $class->compile($i);
 		}
 		
+		// extended methods
+		if (array_key_exists($this->id, self::$extendedMethods)) {
+			foreach (self::$extendedMethods[$this->id] as $method) {
+				$content .= $method;
+			}
+		}
+		
 		$content .= $this->r($i, sprintf('}'));
 		
 		return $content; 
@@ -1067,5 +1074,22 @@ class XBMC_JSONRPC_Type {
 		$content .= $this->r($i, sprintf('	}'));
 		return $content; 
 	}
+	
+	/**
+	 * These are type-specific methods that will be added. 
+	 * @var string[][]
+	 */
+	public static $extendedMethods = array(
+		'Global.Time' => array(
+'		/**
+		 * Returns time in milliseconds.
+		 * @return Time in milliseconds
+		 */
+		public long getMilliseconds() {
+			return hours * 3600000 + minutes * 60000 + seconds * 1000 + milliseconds;
+		}
+',	
+		),
+	);
 	
 }

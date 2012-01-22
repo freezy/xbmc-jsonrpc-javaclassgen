@@ -80,7 +80,8 @@ class XBMC_JSONRPC_Type {
 	
 	/* configuration
 	 */
-	const PACKAGE = 'org.xbmc.android.jsonrpc.api.modelgen';
+	const PACKAGE = 'org.xbmc.android.jsonrpc.api.model';
+	const API_TYPE_NAME = 'API_TYPE';
 	private static $emptyTypes = array('Item.Fields.Base'); // ignore these
 	private static $ignoreTypes = array('Array.Integer', 'Array.String'); // ignore these too
 	private static $imports = array(
@@ -354,30 +355,30 @@ class XBMC_JSONRPC_Type {
 		if ($this->required) {
 			switch ($this->getType()) {
 				case 'string':
-					return 'obj.getString("'.$name.'")';
+					return 'obj.getString('.strtoupper($name).')';
 				case 'integer':
-					return 'obj.getInt("'.$name.'")';
+					return 'obj.getInt('.strtoupper($name).')';
 				case 'boolean':
-					return 'obj.getBoolean("'.$name.'")';
+					return 'obj.getBoolean('.strtoupper($name).')';
 				case 'number':
-					return 'obj.getDouble("'.$name.'")';
+					return 'obj.getDouble('.strtoupper($name).')';
 				case 'object':
-					return 'new '.$this->getJavaType().'(obj.getJSONObject("'.$name.'"))';
+					return 'new '.$this->getJavaType().'(obj.getJSONObject('.strtoupper($name).'))';
 				case 'array':
 					if ($this->getArrayType()->getType() == 'string') {
-						return 'getStringArray(obj, "'.$name.'")';
+						return 'getStringArray(obj, '.strtoupper($name).')';
 					}
 					if ($this->getArrayType()->getType() == 'integer') {
-						return 'getIntegerArray(obj, "'.$name.'")';
+						return 'getIntegerArray(obj, '.strtoupper($name).')';
 					}
-					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(obj, "'.$name.'")';
+					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(obj, '.strtoupper($name).')';
 				default:
 					if (is_array($this->getType())) {
-						return 'new '.$this->javaType.'(obj.getJSONObject("'.$name.'"))';
+						return 'new '.$this->javaType.'(obj.getJSONObject('.strtoupper($name).'))';
 					}
 					switch ($this->getJavaType()) {
 						case 'String':
-							return 'obj.getString("'.$name.'")';
+							return 'obj.getString('.strtoupper($name).')';
 						default:
 							
 							return '/* '.$this->getJavaType().' ('.$this->getType().') */';
@@ -386,31 +387,31 @@ class XBMC_JSONRPC_Type {
 		} else {
 			switch ($this->getType()) {
 				case 'string':
-					return 'parseString(obj, "'.$name.'")';
+					return 'parseString(obj, '.strtoupper($name).')';
 				case 'integer':
-					return 'parseInt(obj, "'.$name.'")';
+					return 'parseInt(obj, '.strtoupper($name).')';
 				case 'boolean':
-					return 'parseBoolean(obj, "'.$name.'")';
+					return 'parseBoolean(obj, '.strtoupper($name).')';
 				case 'number':
-					return 'parseDouble(obj, "'.$name.'")';
+					return 'parseDouble(obj, '.strtoupper($name).')';
 				case 'Array': // "real" array, just return object
 				case 'object':
-					return 'obj.has("'.$name.'") ? new '.$this->getJavaType().'(obj.getJSONObject("'.$name.'")) : null';
+					return 'obj.has('.strtoupper($name).') ? new '.$this->getJavaType().'(obj.getJSONObject('.strtoupper($name).')) : null';
 				case 'array':
 					if ($this->getArrayType()->getType() == 'string') {
-						return 'getStringArray(obj, "'.$name.'")';
+						return 'getStringArray(obj, '.strtoupper($name).')';
 					}
 					if ($this->getArrayType()->getType() == 'integer') {
-						return 'getIntegerArray(obj, "'.$name.'")';
+						return 'getIntegerArray(obj, '.strtoupper($name).')';
 					}
-					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(obj, "'.$name.'")';
+					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(obj, '.strtoupper($name).')';
 				default:
 					if (is_array($this->getType())) {
-						return 'new '.$this->javaType.'(obj.getJSONObject("'.$name.'"))';
+						return 'new '.$this->javaType.'(obj.getJSONObject('.strtoupper($name).'))';
 					}
 					switch ($this->getJavaType()) {
 						case 'String':
-							return 'parseString(obj, "'.$name.'")';
+							return 'parseString(obj, '.strtoupper($name).')';
 						default:
 							return '/* '.$this->getJavaType().' ('.$this->getType().') */';
 					}
@@ -612,8 +613,8 @@ class XBMC_JSONRPC_Type {
 				$this->javaType = $parts[1];
 				break;
 			case 3:
-				if (in_array($parts[1], array('Details', 'Fields'))) {
-					$this->javaType = $parts[2].$parts[1];
+				if (in_array($parts[1], array('Details', 'Fields', 'Items', 'Item'))) {
+					$this->javaType = $parts[2].str_replace('Items', 'Item', $parts[1]);
 				} else {
 					$this->javaType = $parts[1].$parts[2];
 				}
@@ -951,16 +952,26 @@ class XBMC_JSONRPC_Type {
 			self::addImport('JSONSerializable');
 		}
 		if (!$this->isInner) {
-			$content .= $this->r($i, sprintf('	public final static String TYPE = "%s";', $this->name));
+			$content .= $this->r($i, sprintf('	public final static String %s = "%s";', self::API_TYPE_NAME, $this->name));
+		}
+		
+		// field names
+		if (count($this->properties)) {
+			$content .= $this->r($i, sprintf('	// field names'));
+		}
+		foreach ($this->properties as $name => $property) {
+			$content .= $this->r($i, sprintf('	public static final String %s = "%s";', strtoupper($name), $name));
 		}
 		
 		// class members
+		if (count($this->properties)) {
+			$content .= $this->r($i, sprintf('	// class members'));
+		}
 		foreach ($this->properties as $name => $property) {
 			if (count($property->enums) || $property->description) {
 				$content .= $this->r($i, sprintf('	/**'));
 				if ($property->description) {
 					$content .= $this->r($i, sprintf('	 * %s.', $property->description));
-					$content .= $this->r($i, sprintf('	 * <p/>'));
 				}
 				if (count($property->enums)) {
 					$enums = '<tt>'.implode('</tt>, <tt>', $property->enums).'</tt>'; 
@@ -988,7 +999,7 @@ class XBMC_JSONRPC_Type {
 				$content .= $this->r($i, sprintf('	super(obj);'));
 			}
 			if (!$this->isInner) {
-				$content .= $this->r($i, sprintf('	mType = TYPE;'));
+				$content .= $this->r($i, sprintf('	mType = %s;', self::API_TYPE_NAME));
 			}
 			foreach ($this->properties as $name => $property) {
 				$content .= $this->r($i, sprintf('	%s = %s;', $name, $property->getJavaValue($name)));
@@ -1007,7 +1018,7 @@ class XBMC_JSONRPC_Type {
 			$p = $property->getInstance();
 			// native types and native array types we can add directly
 			if ($property->isNative() || ($p->getArrayType() && in_array($p->getArrayType()->getType(), array('string', 'integer', 'any')))) {
-				$content .= $this->r($i, sprintf('	obj.put("%s", %s);', $name, $name));
+				$content .= $this->r($i, sprintf('	obj.put(%s, %s);', strtoupper($name), $name));
 			// custom object need special serialization
 			} elseif ($property->getInstance()->arrayType) {
 				$content .= $this->r($i, sprintf('	final JSONArray %sArray = new JSONArray();', $name));
@@ -1015,9 +1026,9 @@ class XBMC_JSONRPC_Type {
 				$content .= $this->r($i, sprintf('		%sArray.put(item.toJSONObject());', $name));
 				$content .= $this->r($i, sprintf('	}'));
 				$content .= $this->r($i, sprintf('	%sArray.put(%sArray);', $name, $name));
-				$content .= $this->r($i, sprintf('	obj.put("%s", %sArray);', $name, $name));						
+				$content .= $this->r($i, sprintf('	obj.put(%s, %sArray);', strtoupper($name), $name));						
 			} else {
-				$content .= $this->r($i, sprintf('	obj.put("%s", %s.toJSONObject());', $name, $name));
+				$content .= $this->r($i, sprintf('	obj.put(%s, %s.toJSONObject());', strtoupper($name), $name));
 			}
 			XBMC_JSONRPC_Method::addImport('JSONObject');
 			XBMC_JSONRPC_Method::addImport('JSONException');

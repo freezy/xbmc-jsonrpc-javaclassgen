@@ -39,7 +39,7 @@ class XBMC_JSONRPC_Method {
 	
 	/* configuration
 	 */
-	const PACKAGE = 'org.xbmc.android.jsonrpc.api.callgen';
+	const PACKAGE = 'org.xbmc.android.jsonrpc.api.call';
 	const UNDEFINED_RESULT = 'UndefinedResult';
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',

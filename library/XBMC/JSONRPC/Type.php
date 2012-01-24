@@ -1100,8 +1100,11 @@ class XBMC_JSONRPC_Type {
 			$content .= $this->r($i, sprintf('@Override'));
 			$content .= $this->r($i, sprintf('public void writeToParcel(Parcel parcel, int flags) {'));
 			$i++;
+			if ($this->extends) {
+				$content .= $this->r($i, sprintf('super.writeToParcel(parcel, flags);'));
+			}
 			foreach ($this->properties as $name => $prop) {
-				if ($prop->getArrayType()) {
+			if ($prop->getArrayType()) {
 					$content .= $this->r($i, sprintf('parcel.writeInt(%s.size());', $name));
 					$content .= $this->r($i, sprintf('for (%s item : %s) {', $prop->getArrayType()->getJavaType(), $name));
 					switch ($prop->getArrayType()->getJavaType()) {

@@ -51,6 +51,8 @@ class XBMC_JSONRPC_Method {
 		'JSONArray' => 'org.json.JSONArray',
 		'JSONObject' => 'org.json.JSONObject',
 		'JSONException' => 'org.json.JSONException',
+		'Parcel' => 'android.os.Parcel',
+		'Parcelable' => 'android.os.Parcelable',
 	);
 	public static $currentImports = array();
 	

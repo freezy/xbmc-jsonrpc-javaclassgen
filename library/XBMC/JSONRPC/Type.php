@@ -38,7 +38,7 @@
 class XBMC_JSONRPC_Type {
 	
 	const HALT_AT = ''; // php xbmc-introspect-java.php  | source-highlight -s java -f esc
-//	const HALT_AT = 'Playlist.Item';
+//	const HALT_AT = 'Audio.Details.Artist';
 	
 	/* directly copied attributes:
 	 */
@@ -82,6 +82,7 @@ class XBMC_JSONRPC_Type {
 	 */
 	const PACKAGE = 'org.xbmc.android.jsonrpc.api.model';
 	const API_TYPE_NAME = 'API_TYPE';
+	const MAKE_PARCELABLE = true;
 	private static $emptyTypes = array('Item.Fields.Base'); // ignore these
 	private static $ignoreTypes = array('Array.Integer', 'Array.String'); // ignore these too
 	private static $imports = array(
@@ -91,7 +92,10 @@ class XBMC_JSONRPC_Type {
 		'JSONArray' => 'org.json.JSONArray',
 		'JSONObject' => 'org.json.JSONObject',
 		'JSONException' => 'org.json.JSONException',
+		'Parcel' => 'android.os.Parcel',
+		'Parcelable' => 'android.os.Parcelable',
 	);
+	
 	public static $print = true;
 	
 	/* temp crap
@@ -294,6 +298,33 @@ class XBMC_JSONRPC_Type {
 					}
 				}
 			}
+		}
+	}
+	public function getJavaUnparcel() {
+		if ($this->getArrayType()) {
+			throw new Exception('No unparceling for arrays!');
+		}
+		$type = $this->getType();
+		if (is_array($type)) {
+			$t = $this->getJavaMultiType($type);
+			return '<'.$t.'>readParcelable('.$t.'.class.getClassLoader())';
+		}
+		switch ($this->getType()) {
+			case 'integer':
+				return 'readInt()';
+			case 'any':
+			case 'null':
+			case 'string':
+				return 'readString()';
+			case 'boolean':
+				return 'readInt() == 1';
+			case 'number':
+				return 'readDouble()';
+			case 'object':
+				return '<'.$this->getJavaType().'>readParcelable('.$this->getJavaType().'.class.getClassLoader())';
+			default:
+				print_r($type);exit;
+				throw new Exception('Unknown type "'.$type.'".');
 		}
 	}
 	public function getJavaParamType($niceArrays = false) {
@@ -948,8 +979,10 @@ class XBMC_JSONRPC_Type {
 		if ($this->getJavaParent()) {
 			$content .= $this->r($i, sprintf('public static class %s extends %s {', $this->javaType, $this->getJavaParent()));
 		} else {
-			$content .= $this->r($i, sprintf('public static class %s implements JSONSerializable {', $this->javaType));
+			$content .= $this->r($i, sprintf('public static class %s implements JSONSerializable, Parcelable {', $this->javaType));
 			self::addImport('JSONSerializable');
+			self::addImport('Parcelable');
+			XBMC_JSONRPC_Method::addImport('Parcelable');
 		}
 		if (!$this->isInner) {
 			$content .= $this->r($i, sprintf('	public final static String %s = "%s";', self::API_TYPE_NAME, $this->name));
@@ -1050,6 +1083,96 @@ class XBMC_JSONRPC_Type {
 		// inner classes
 		foreach ($this->getInnerClasses() as $class) {
 			$content .= $class->compile($i);
+		}
+		
+		// parcelable
+		if (self::MAKE_PARCELABLE) {
+			self::addImport('Parcel');
+			self::addImport('Parcelable');
+			XBMC_JSONRPC_Method::addImport('Parcel');
+			XBMC_JSONRPC_Method::addImport('Parcelable');
+			$i++;
+			$content .= $this->r($i, sprintf('/**'));
+			$content .= $this->r($i, sprintf(' * Flatten this object into a Parcel.'));
+			$content .= $this->r($i, sprintf(' * @param parcel the Parcel in which the object should be written'));
+			$content .= $this->r($i, sprintf(' * @param flags additional flags about how the object should be written'));
+			$content .= $this->r($i, sprintf(' */'));
+			$content .= $this->r($i, sprintf('@Override'));
+			$content .= $this->r($i, sprintf('public void writeToParcel(Parcel parcel, int flags) {'));
+			$i++;
+			foreach ($this->properties as $name => $prop) {
+				if ($prop->getArrayType()) {
+					$content .= $this->r($i, sprintf('parcel.writeInt(%s.size());', $name));
+					$content .= $this->r($i, sprintf('for (%s item : %s) {', $prop->getArrayType()->getJavaType(), $name));
+					switch ($prop->getArrayType()->getJavaType()) {
+						case 'String':
+						case 'Integer':
+						case 'int':
+						case 'Double':
+						case 'double':
+						case 'Boolean':
+						case 'boolean':
+							$content .= $this->r($i, sprintf('	parcel.writeValue(item);', $name));
+							break;
+						default:
+							$content .= $this->r($i, sprintf('	parcel.writeParcelable(item, flags);', $name));
+							break;
+					}
+					$content .= $this->r($i, sprintf('}', $name));
+				} else {
+					if (strtolower($prop->javaType) == 'boolean') {
+						$content .= $this->r($i, sprintf('parcel.writeInt(%s ? 1 : 0);', $name));
+					} else {
+						$content .= $this->r($i, sprintf('parcel.writeValue(%s);', $name));
+					}
+				}
+			}
+			$i--;
+			$content .= $this->r($i, sprintf('}'));
+			
+			$content .= $this->r($i, sprintf('@Override'));
+			$content .= $this->r($i, sprintf('public int describeContents() {'));
+			$content .= $this->r($i, sprintf('	return 0;'));
+			$content .= $this->r($i, sprintf('}'));
+			
+			$content .= $this->r($i, sprintf('/**'));
+ 			$content .= $this->r($i, sprintf('* Construct via parcel'));
+ 			$content .= $this->r($i, sprintf('*/'));
+			$content .= $this->r($i, sprintf('protected %s(Parcel parcel) {', $this->javaType));
+			$i++;
+			if ($this->extends) {
+				$content .= $this->r($i, sprintf('super(parcel);'));
+			}
+			foreach ($this->properties as $name => $prop) {
+				if ($prop->getArrayType()) {
+					$content .= $this->r($i, sprintf('final int %sSize = parcel.readInt();', $name));
+					$content .= $this->r($i, sprintf('%s = new %s(%sSize);', $name, $prop->getJavaType(), $name));
+					$content .= $this->r($i, sprintf('for (int i = 0; i < %sSize; i++) {', $name));
+					$content .= $this->r($i, sprintf('	%s.add(parcel.%s);', $name, $prop->getArrayType()->getJavaUnparcel()));
+					$content .= $this->r($i, sprintf('}'));
+				} else {
+					$content .= $this->r($i, sprintf('%s = parcel.%s;', $name, $prop->getJavaUnparcel()));
+				}
+			}
+			$i--;
+			$content .= $this->r($i, sprintf('}'));
+			
+			$content .= $this->r($i, sprintf('/**'));
+ 			$content .= $this->r($i, sprintf('* Generates instances of this Parcelable class from a Parcel.'));
+ 			$content .= $this->r($i, sprintf('*/'));
+			$content .= $this->r($i, sprintf('public static final Parcelable.Creator<%s> CREATOR = new Parcelable.Creator<%s>() {', $this->javaType, $this->javaType));
+			$i++;
+			$content .= $this->r($i, sprintf('@Override'));
+			$content .= $this->r($i, sprintf('public %s createFromParcel(Parcel parcel) {', $this->javaType));
+			$content .= $this->r($i, sprintf('	return new %s(parcel);', $this->javaType));
+			$content .= $this->r($i, sprintf('}'));
+			$content .= $this->r($i, sprintf('@Override'));
+			$content .= $this->r($i, sprintf('public %s[] newArray(int n) {', $this->javaType));
+			$content .= $this->r($i, sprintf('	return new %s[n];', $this->javaType));
+			$content .= $this->r($i, sprintf('}'));
+			$i--;
+			$content .= $this->r($i, sprintf('};'));		
+			$i--;
 		}
 		
 		// extended methods

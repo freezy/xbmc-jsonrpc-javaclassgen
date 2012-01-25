@@ -88,10 +88,10 @@ class XBMC_JSONRPC_Type {
 	private static $imports = array(
 		'ArrayList' => 'java.util.ArrayList',
 		'AbstractModel' => 'org.xbmc.android.jsonrpc.api.AbstractModel',
-		'JSONSerializable' => 'org.xbmc.android.jsonrpc.api.JSONSerializable',
-		'JSONArray' => 'org.json.JSONArray',
-		'JSONObject' => 'org.json.JSONObject',
-		'JSONException' => 'org.json.JSONException',
+		'JsonSerializable' => 'org.xbmc.android.jsonrpc.api.JsonSerializable',
+		'ArrayNode' => 'org.codehaus.jackson.node.ArrayNode',
+		'ObjectNode' => 'org.codehaus.jackson.node.ObjectNode',
+		'JsonNode' => 'org.codehaus.jackson.JsonNode',
 		'Parcel' => 'android.os.Parcel',
 		'Parcelable' => 'android.os.Parcelable',
 	);
@@ -386,30 +386,30 @@ class XBMC_JSONRPC_Type {
 		if ($this->required) {
 			switch ($this->getType()) {
 				case 'string':
-					return 'obj.getString('.strtoupper($name).')';
+					return 'node.get('.strtoupper($name).').getTextValue()';
 				case 'integer':
-					return 'obj.getInt('.strtoupper($name).')';
+					return 'node.get('.strtoupper($name).').getIntValue()';
 				case 'boolean':
-					return 'obj.getBoolean('.strtoupper($name).')';
+					return 'node.get('.strtoupper($name).').getBooleanValue()';
 				case 'number':
-					return 'obj.getDouble('.strtoupper($name).')';
+					return 'node.get('.strtoupper($name).').getDoubleValue()';
 				case 'object':
-					return 'new '.$this->getJavaType().'(obj.getJSONObject('.strtoupper($name).'))';
+					return 'new '.$this->getJavaType().'((ObjectNode)node.get('.strtoupper($name).'))';
 				case 'array':
 					if ($this->getArrayType()->getType() == 'string') {
-						return 'getStringArray(obj, '.strtoupper($name).')';
+						return 'getStringArray(node, '.strtoupper($name).')';
 					}
 					if ($this->getArrayType()->getType() == 'integer') {
-						return 'getIntegerArray(obj, '.strtoupper($name).')';
+						return 'getIntegerArray(node, '.strtoupper($name).')';
 					}
-					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(obj, '.strtoupper($name).')';
+					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(node, '.strtoupper($name).')';
 				default:
 					if (is_array($this->getType())) {
-						return 'new '.$this->javaType.'(obj.getJSONObject('.strtoupper($name).'))';
+						return 'new '.$this->javaType.'((ObjectNode)node.get('.strtoupper($name).'))';
 					}
 					switch ($this->getJavaType()) {
 						case 'String':
-							return 'obj.getString('.strtoupper($name).')';
+							return 'node.get('.strtoupper($name).').getTextValue()';
 						default:
 							
 							return '/* '.$this->getJavaType().' ('.$this->getType().') */';
@@ -418,31 +418,31 @@ class XBMC_JSONRPC_Type {
 		} else {
 			switch ($this->getType()) {
 				case 'string':
-					return 'parseString(obj, '.strtoupper($name).')';
+					return 'parseString(node, '.strtoupper($name).')';
 				case 'integer':
-					return 'parseInt(obj, '.strtoupper($name).')';
+					return 'parseInt(node, '.strtoupper($name).')';
 				case 'boolean':
-					return 'parseBoolean(obj, '.strtoupper($name).')';
+					return 'parseBoolean(node, '.strtoupper($name).')';
 				case 'number':
-					return 'parseDouble(obj, '.strtoupper($name).')';
+					return 'parseDouble(node, '.strtoupper($name).')';
 				case 'Array': // "real" array, just return object
 				case 'object':
-					return 'obj.has('.strtoupper($name).') ? new '.$this->getJavaType().'(obj.getJSONObject('.strtoupper($name).')) : null';
+					return 'node.has('.strtoupper($name).') ? new '.$this->getJavaType().'((ObjectNode)node.get('.strtoupper($name).')) : null';
 				case 'array':
 					if ($this->getArrayType()->getType() == 'string') {
-						return 'getStringArray(obj, '.strtoupper($name).')';
+						return 'getStringArray(node, '.strtoupper($name).')';
 					}
 					if ($this->getArrayType()->getType() == 'integer') {
-						return 'getIntegerArray(obj, '.strtoupper($name).')';
+						return 'getIntegerArray(node, '.strtoupper($name).')';
 					}
-					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(obj, '.strtoupper($name).')';
+					return $this->getArrayType()->getJavaType().'.'.$this->getArrayType()->getJavaArrayCreatorMethod().'(node, '.strtoupper($name).')';
 				default:
 					if (is_array($this->getType())) {
-						return 'new '.$this->javaType.'(obj.getJSONObject('.strtoupper($name).'))';
+						return 'new '.$this->javaType.'((ObjectNode)node.get('.strtoupper($name).'))';
 					}
 					switch ($this->getJavaType()) {
 						case 'String':
-							return 'parseString(obj, '.strtoupper($name).')';
+							return 'parseString(node, '.strtoupper($name).')';
 						default:
 							return '/* '.$this->getJavaType().' ('.$this->getType().') */';
 					}
@@ -475,15 +475,15 @@ class XBMC_JSONRPC_Type {
 		$t = $this->getJavaType();
 		$content .= $this->r($i, sprintf('/**'));
 		$content .= $this->r($i, sprintf(' * Extracts a list of {@link %s} objects from a JSON array.', $t));
-		$content .= $this->r($i, sprintf(' * @param obj JSONObject containing the list of objects'));
+		$content .= $this->r($i, sprintf(' * @param obj ObjectNode containing the list of objects'));
 		$content .= $this->r($i, sprintf(' * @param key Key pointing to the node where the list is stored'));
 		$content .= $this->r($i, sprintf(' */'));
-		$content .= $this->r($i, sprintf('static ArrayList<%s> %s(JSONObject obj, String key) throws JSONException {', $t, $this->getJavaArrayCreatorMethod()));
-		$content .= $this->r($i, sprintf('	if (obj.has(key)) {'));
-		$content .= $this->r($i, sprintf('		final JSONArray a = obj.getJSONArray(key);'));
-		$content .= $this->r($i, sprintf('		final ArrayList<%s> l = new ArrayList<%s>(a.length());', $t, $t));
-		$content .= $this->r($i, sprintf('		for (int i = 0; i < a.length(); i++) {'));
-		$content .= $this->r($i, sprintf('			l.add(new %s(a.getJSONObject(i)));', $t));
+		$content .= $this->r($i, sprintf('static ArrayList<%s> %s(ObjectNode node, String key) {', $t, $this->getJavaArrayCreatorMethod()));
+		$content .= $this->r($i, sprintf('	if (node.has(key)) {'));
+		$content .= $this->r($i, sprintf('		final ArrayNode a = (ArrayNode)node.get(key);'));
+		$content .= $this->r($i, sprintf('		final ArrayList<%s> l = new ArrayList<%s>(a.size());', $t, $t));
+		$content .= $this->r($i, sprintf('		for (int i = 0; i < a.size(); i++) {'));
+		$content .= $this->r($i, sprintf('			l.add(new %s((ObjectNode)a.get(i)));', $t));
 		$content .= $this->r($i, sprintf('		}'));
 		$content .= $this->r($i, sprintf('		return l;'));
 		$content .= $this->r($i, sprintf('	}'));
@@ -957,9 +957,7 @@ class XBMC_JSONRPC_Type {
 	}
 	public function compileClass($i, $jsonConstructor = true) {
 		
-		self::addImport('JSONArray');
-		self::addImport('JSONObject');
-		self::addImport('JSONException');
+		self::addImport('ArrayNode');
 		
 		$this->p('*** COMPILE CLASS: '.$this->name);
 		$i++;
@@ -979,8 +977,8 @@ class XBMC_JSONRPC_Type {
 		if ($this->getJavaParent()) {
 			$content .= $this->r($i, sprintf('public static class %s extends %s {', $this->javaType, $this->getJavaParent()));
 		} else {
-			$content .= $this->r($i, sprintf('public static class %s implements JSONSerializable, Parcelable {', $this->javaType));
-			self::addImport('JSONSerializable');
+			$content .= $this->r($i, sprintf('public static class %s implements JsonSerializable, Parcelable {', $this->javaType));
+			self::addImport('JsonSerializable');
 			self::addImport('Parcelable');
 			XBMC_JSONRPC_Method::addImport('Parcelable');
 		}
@@ -1027,9 +1025,9 @@ class XBMC_JSONRPC_Type {
 			$content .= $this->r($i, sprintf(' * @param obj JSON object representing a %s object', $this->javaType));
 			$content .= $this->r($i, ' */');
 			// body
-			$content .= $this->r($i, sprintf('public %s(JSONObject obj) throws JSONException {', $this->javaType));
+			$content .= $this->r($i, sprintf('public %s(ObjectNode node) {', $this->javaType));
 			if ($this->extends) {
-				$content .= $this->r($i, sprintf('	super(obj);'));
+				$content .= $this->r($i, sprintf('	super(node);'));
 			}
 			if (!$this->isInner) {
 				$content .= $this->r($i, sprintf('	mType = %s;', self::API_TYPE_NAME));
@@ -1038,6 +1036,7 @@ class XBMC_JSONRPC_Type {
 				$content .= $this->r($i, sprintf('	%s = %s;', $name, $property->getJavaValue($name)));
 			}
 			$content .= $this->r($i, sprintf('}'));
+			XBMC_JSONRPC_Method::addImport('ObjectNode');
 		}
 		
 		// native constructor
@@ -1045,28 +1044,33 @@ class XBMC_JSONRPC_Type {
 		
 		// json serializer
 		$content .= $this->r($i, sprintf('@Override'));
-		$content .= $this->r($i, sprintf('public JSONObject toJSONObject() throws JSONException {'));
-		$content .= $this->r($i, sprintf('	final JSONObject obj = new JSONObject();'));
+		$content .= $this->r($i, sprintf('public ObjectNode toObjectNode() {'));
+		$content .= $this->r($i, sprintf('	final ObjectNode node = OM.createObjectNode();'));
 		foreach ($this->properties as $name => $property) {
 			$p = $property->getInstance();
 			// native types and native array types we can add directly
-			if ($property->isNative() || ($p->getArrayType() && in_array($p->getArrayType()->getType(), array('string', 'integer', 'any')))) {
-				$content .= $this->r($i, sprintf('	obj.put(%s, %s);', strtoupper($name), $name));
+			if ($property->isNative()) {
+				$content .= $this->r($i, sprintf('	node.put(%s, %s);', strtoupper($name), $name));
 			// custom object need special serialization
 			} elseif ($property->getInstance()->arrayType) {
-				$content .= $this->r($i, sprintf('	final JSONArray %sArray = new JSONArray();', $name));
+				$content .= $this->r($i, sprintf('	final ArrayNode %sArray = OM.createArrayNode();', $name));
 				$content .= $this->r($i, sprintf('	for (%s item : %s) {', $property->getArrayType()->getJavaType(), $name));
-				$content .= $this->r($i, sprintf('		%sArray.put(item.toJSONObject());', $name));
+				if (in_array($p->getArrayType()->getType(), array('string', 'integer', 'any'))) {
+					$content .= $this->r($i, sprintf('		%sArray.add(item);', $name));
+				} else {
+					$content .= $this->r($i, sprintf('		%sArray.add(item.toObjectNode());', $name));
+				}				
 				$content .= $this->r($i, sprintf('	}'));
-				$content .= $this->r($i, sprintf('	%sArray.put(%sArray);', $name, $name));
-				$content .= $this->r($i, sprintf('	obj.put(%s, %sArray);', strtoupper($name), $name));						
+				$content .= $this->r($i, sprintf('	node.put(%s, %sArray);', strtoupper($name), $name));						
 			} else {
-				$content .= $this->r($i, sprintf('	obj.put(%s, %s.toJSONObject());', strtoupper($name), $name));
+				$content .= $this->r($i, sprintf('	node.put(%s, %s.toObjectNode());', strtoupper($name), $name));
 			}
-			XBMC_JSONRPC_Method::addImport('JSONObject');
-			XBMC_JSONRPC_Method::addImport('JSONException');
+			XBMC_JSONRPC_Method::addImport('ArrayNode');
+			XBMC_JSONRPC_Method::addImport('ObjectNode');
+			self::addImport('ArrayNode');
+			self::addImport('ObjectNode');
 		}
-		$content .= $this->r($i, sprintf('	return obj;'));
+		$content .= $this->r($i, sprintf('	return node;'));
 		$content .= $this->r($i, sprintf('}'));
 		
 		// inner "multi" types classes
@@ -1139,8 +1143,8 @@ class XBMC_JSONRPC_Type {
 			$content .= $this->r($i, sprintf('}'));
 			
 			$content .= $this->r($i, sprintf('/**'));
- 			$content .= $this->r($i, sprintf('* Construct via parcel'));
- 			$content .= $this->r($i, sprintf('*/'));
+ 			$content .= $this->r($i, sprintf(' * Construct via parcel'));
+ 			$content .= $this->r($i, sprintf(' */'));
 			$content .= $this->r($i, sprintf('protected %s(Parcel parcel) {', $this->javaType));
 			$i++;
 			if ($this->extends) {
@@ -1161,8 +1165,8 @@ class XBMC_JSONRPC_Type {
 			$content .= $this->r($i, sprintf('}'));
 			
 			$content .= $this->r($i, sprintf('/**'));
- 			$content .= $this->r($i, sprintf('* Generates instances of this Parcelable class from a Parcel.'));
- 			$content .= $this->r($i, sprintf('*/'));
+ 			$content .= $this->r($i, sprintf(' * Generates instances of this Parcelable class from a Parcel.'));
+ 			$content .= $this->r($i, sprintf(' */'));
 			$content .= $this->r($i, sprintf('public static final Parcelable.Creator<%s> CREATOR = new Parcelable.Creator<%s>() {', $this->javaType, $this->javaType));
 			$i++;
 			$content .= $this->r($i, sprintf('@Override'));
